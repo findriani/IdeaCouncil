@@ -1,9 +1,7 @@
-# User Research Profile — Example
-# ─────────────────────────────────────────────────────────────────────────────
+# User Research Profile - Example
 # Copy this file to user_profile.yaml and fill in your own details.
-# Every field is injected into council prompts so models generate ideas that
-# fit your actual situation. Be specific — vague entries produce vague ideas.
-# ─────────────────────────────────────────────────────────────────────────────
+# Every field is injected into council prompts so models generate ideas
+# that fit your actual situation. Be specific - vague entries produce vague ideas.
 
 research_interests:
   primary_fields:
@@ -18,11 +16,10 @@ research_interests:
     - Data augmentation for imbalanced biomedical datasets
 
   avoid_topics:
-    - Pure NLP / large language model training (out of scope)
+    - Pure NLP or large language model training (out of scope)
     - Wet-lab biology or chemistry experiments
     - Theoretical mathematics with no implementation component
-    - Research requiring ethics approval for new human data collection
-      (existing public datasets only)
+    - Research requiring ethics approval for new human data collection (existing public datasets only)
 
 
 constraints:
@@ -30,64 +27,54 @@ constraints:
     - Undergraduate final-year student (Informatics / Computer Science)
     - Comfortable with Python, scikit-learn, PyTorch basics
     - Familiar with pandas, NumPy, matplotlib
-    - Limited experience with advanced mathematics (no measure theory,
-      no advanced statistics beyond basic hypothesis testing)
+    - Limited experience with advanced mathematics (no measure theory, no advanced statistics beyond basic hypothesis testing)
     - No prior publication experience
 
   technical:
     - No access to HPC clusters or institutional GPU servers
-    - Deep learning models must fit in Google Colab free tier (T4 GPU,
-      ~12 GB VRAM, sessions reset after ~12 hours)
-    - Prefer models under 100M parameters — larger models are acceptable
-      only if pre-trained weights are publicly available and fine-tuning
-      fits within Colab constraints
+    - Deep learning models must fit in Google Colab free tier (T4 GPU, ~12 GB VRAM, sessions reset after ~12 hours)
+    - Prefer models under 100M parameters unless pre-trained weights are publicly available
     - Cannot collect new primary data (surveys, sensors, clinical trials)
-    - No MATLAB license — Python only
+    - No MATLAB license - Python only
 
   timeline:
-    - Total duration: 6 months (one semester)
+    - Total duration 6 months (one semester)
 
 
 goals:
-  primary: >
-    Produce a complete, reproducible research contribution publishable at
-    a low-to-mid tier regional conference or journal (e.g., national
-    informatics conference, Scopus-indexed Q3/Q4 journal). Novelty
-    sufficient to clear a basic peer review — not a top-venue paper.
+  primary: "Publishable at a low-to-mid tier regional conference or Scopus-indexed Q3/Q4 journal. Novelty sufficient to clear basic peer review - not a top-venue paper."
   secondary:
-    - Working implementation with clear, documented code on GitHub
+    - Working implementation with clear documented code on GitHub
     - Results visualised with charts or demo (not just tables of numbers)
     - Methodology clear enough that a fellow undergraduate could reproduce it
     - Ideally applicable to Indonesian healthcare or environmental context
-      (makes local contribution angle easier to argue in the thesis)
 
 
 resources:
   computational:
-    - Personal laptop: Windows 11, 8 GB RAM, Intel Core i5, no discrete GPU
+    - Personal laptop - Windows 11, 8 GB RAM, Intel Core i5, no discrete GPU
     - Google Colab free tier (T4 GPU, ~12 GB VRAM)
-    - Google Drive 15 GB (dataset storage)
+    - Google Drive 15 GB for dataset storage
     - No cloud compute budget (AWS, GCP, Azure are out)
 
   datasets:
-    - Public repositories: Kaggle, UCI ML Repository, PhysioNet
+    - Public repositories - Kaggle, UCI ML Repository, PhysioNet
     - Can download datasets up to ~2 GB (storage constraint)
     - Cannot collect new data or access hospital/clinical databases
 
   budget:
-    api_costs: Minimal — $0 to $20/month total for all LLM API usage
-    other: >
-      Student budget, no research grant or institutional funding.
-      Cannot purchase proprietary datasets or paid tools.
+    api_costs: "Minimal - $0 to $20/month total for all LLM API usage"
+    other: "Student budget, no research grant or institutional funding. Cannot purchase proprietary datasets or paid tools."
 
 
 preferences:
   research_style:
-    - Applied over theoretical — must produce a working system or experiment
-    - Reproducible: all experiments scriptable, results deterministic with
-      fixed random seeds
-    - Prefer incremental novelty over high-risk moonshots — something that
-      reliably works beats something ambitious that might not finish in time
-    - Favour pipelines that combine existing techniques in a new way over
-      designing new algorithms from scratch
+    - Applied over theoretical - must produce a working system or experiment
+    - Reproducible - all experiments scriptable, results deterministic with fixed random seeds
+    - Prefer incremental novelty over high-risk moonshots
+    - Favour pipelines that combine existing techniques in a new way over designing new algorithms from scratch
 
+  output_format:
+    - Clean Python code with README and requirements.txt on GitHub
+    - Figures and plots suitable for thesis inclusion
+    - Results table comparing proposed method vs at least 2 baselines

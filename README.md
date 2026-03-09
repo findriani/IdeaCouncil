@@ -55,7 +55,9 @@ Your research prompt
 - **Anonymized criticism** — models evaluate ideas without knowing the source (prevents brand bias)
 - **Iterative refinement** — up to 3 rounds with feedback between each
 - **User profile** — persistent YAML config for your field, constraints, timeline, resources
-- **Context slots** — paste dataset description and literature review; app summarizes if too long
+- **Dataset context** — describe your dataset so ideas are grounded in what your data can actually support
+- **Literature context** — paste your related work so the council avoids re-proposing already-done ideas
+- **Built-in summarizer** — one-click summarization of long context using Gemini Flash Lite (cheap, fast)
 - **Q&A panel** — ask follow-up questions about any idea after the council runs
 - **Live pricing** — model prices fetched from OpenRouter at startup, not hardcoded
 - **Cost tracking** — real-time breakdown by phase and model
@@ -126,6 +128,44 @@ resources:
 ```
 
 Edit via the sidebar editor in the app, or directly in the YAML file.
+
+---
+
+## Context Slots
+
+Before running the council, you can optionally provide two pieces of context that significantly improve idea quality.
+
+### Dataset Description
+
+If you already have a specific dataset you want to work with, describe it here. The council uses this to generate ideas that are actually feasible with your data — avoiding suggestions that require signals, labels, or sample sizes you don't have.
+
+**What to include:** dataset name, number of samples, features/signals, labels, format, and any known limitations.
+
+**Target length:** ~400 words / ~2500 characters. A helper prompt for generating a well-structured description is provided in [`dataset_description_prompt.md`](dataset_description_prompt.md).
+
+Context is injected at different verbosity levels per phase:
+- **Diverge** — full description (2500 chars), so models generate ideas grounded in what the data can support
+- **Criticize** — first 500 chars (name, purpose, key constraints), for feasibility scoring
+- **Converge** — first 100 chars (dataset name only), to anchor the final synthesis
+
+### Literature Context
+
+Paste a summary of related work in your area. This tells the council what has already been done, so brainstormers can avoid re-proposing existing approaches and instead focus on genuine gaps.
+
+**What to include:** dominant methods and their results, standard benchmarks, known limitations of current work, and under-explored conditions or problem framings.
+
+**Framing tip:** describe the landscape as *background context*, not as a list of gaps to fill. Models told "here are the gaps" will fill them incrementally. Models told "here is what exists and why it falls short" tend to go sideways — proposing genuinely novel framings rather than obvious extensions.
+
+**Target length:** ~400 words / ~2500 characters. A helper prompt for condensing a long literature review is provided in [`literature_summarization_prompt.md`](literature_summarization_prompt.md).
+
+Context is injected at:
+- **Diverge** — full summary (2500 chars), so models know the landscape before generating ideas
+- **Criticize** — first 1000 chars, to assess novelty against known work
+- **Converge** — dropped (synthesis works from ideas and critiques, not raw papers)
+
+### Built-in Summarizer
+
+If your dataset description or literature dump is too long, the **✨ Summarize** button calls Gemini 3.1 Flash Lite to compress it to the target length automatically. The character count is shown next to the input so you know when to use it.
 
 ---
 

@@ -1,0 +1,62 @@
+# Environment
+.env
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+ENV/
+
+# Outputs
+outputs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Streamlit secrets (DO NOT COMMIT)
+.streamlit/secrets.toml
+
+# But keep config and example
+!.streamlit/config.toml
+!.streamlit/secrets.toml.example
+
+# Personal user profile (use user_profile.example.yaml as template)
+config/user_profile.yaml
+
+# Personal session outputs & data
+Minutestep/
+PPG-ECG/
+data/
+
+# Internal dev/implementation notes
+FINAL_SUMMARY.md
+IMPLEMENTATION_SUMMARY.md
+INTEGRATION_GUIDE.md
+KARPATHY_COMPARISON.md
+KARPATHY_DETAILED_COMPARISON.md
+
+# Personal deploy scripts
+deploy_to_github.bat
+deploy_to_github.sh
+
+# Stray files
+config__init__.py
+
+# Claude Code local settings
+.claude/

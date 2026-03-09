@@ -1,0 +1,48 @@
+# User Research Profile — Example
+# Copy this file to user_profile.yaml and fill in your own details.
+# This file is injected into all council prompts so models generate
+# ideas that fit your actual constraints.
+
+research_interests:
+  primary_fields:
+    - Machine Learning
+    - Computer Science
+    - Data Science
+  specific_topics:
+    - feature engineering
+    - data preprocessing
+  avoid_topics:
+    - Purely theoretical work outside your field
+
+constraints:
+  expertise:
+    - e.g. "Undergraduate level, familiar with Python and basic ML"
+  technical:
+    - e.g. "No access to HPC clusters"
+    - e.g. "Prefer lightweight models, limited GPU access"
+  timeline:
+    - e.g. "Thesis duration: 6 months"
+
+goals:
+  primary: e.g. "Publishable at a regional conference or journal"
+  secondary:
+    - Practical implementation
+    - Learning experience
+
+resources:
+  computational:
+    - e.g. "Personal laptop (8GB RAM, no GPU)"
+    - e.g. "Google Colab free tier"
+  datasets:
+    - e.g. "Public datasets (Kaggle, UCI)"
+  budget:
+    api_costs: e.g. "Minimal ($0–$20/month)"
+    other: e.g. "Student budget, no external funding"
+
+preferences:
+  research_style:
+    - Applied over theoretical
+    - Reproducible results
+  output_format:
+    - Well-documented code
+    - Visual results (charts, demos)

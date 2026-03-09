@@ -1,0 +1,9 @@
+# Python 3.11+ recommended
+# After reinstalling Anaconda, these versions will work
+streamlit>=1.31.0
+httpx>=0.26.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+pandas>=2.0.0
+aiofiles>=23.2.1
+scipy>=1.11.0

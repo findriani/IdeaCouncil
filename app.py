@@ -220,7 +220,7 @@ def _summarize_context(text: str, prompt_type: str, api_key: str) -> str:
 Rules:
 - Write as background context, NOT as a list of suggested research directions
 - Do not use language like "future work should..." or "a promising direction is..."
-- Target length: ~1000 words / ~7000 characters
+- Target length: ~7000 characters (roughly 1100-1200 words). Write until you reach this length — do not stop early.
 - A creative reader should finish this and feel informed, not instructed"""
     else:  # dataset
         system = "You are preparing a dataset briefing for a research brainstorming session."
@@ -248,7 +248,7 @@ Rules:
             {"role": "user", "content": f"{instruction}\n\nText to summarize:\n\n{text}"}
         ],
         "temperature": 0.3,
-        "max_tokens": 2000
+        "max_tokens": 2500
     }
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -466,8 +466,12 @@ def main():
                 current_text = (file_text or typed).strip()
 
                 # Show success message from previous summarization run
-                if st.session_state.pop(success_key, None) is not None:
-                    st.success(f"✅ Summarized to {len(current_text):,} chars using Gemini Flash Lite")
+                summarized_len = st.session_state.pop(success_key, None)
+                if summarized_len is not None:
+                    st.success(
+                        f"✅ Summarized to {summarized_len:,} chars using Gemini Flash Lite. "
+                        f"See the 'Type / Paste' tab."
+                    )
 
                 # Char count + summarize button
                 if current_text:

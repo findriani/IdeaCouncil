@@ -15,7 +15,6 @@ research_interests:
     - Physiological signal classification (ECG, PPG, EEG)
     - Lightweight model architectures for edge deployment
     - Feature engineering for time-series data
-    - Explainability and interpretability (SHAP, LIME, Grad-CAM)
     - Data augmentation for imbalanced biomedical datasets
 
   avoid_topics:
@@ -46,12 +45,7 @@ constraints:
     - No MATLAB license — Python only
 
   timeline:
-    - Total thesis duration: 6 months (one semester)
-    - Month 1-2: Literature review and dataset preparation
-    - Month 3-4: Implementation and experiments
-    - Month 5: Writing and revisions
-    - Month 6: Submission and defence
-    - Hard deadline: cannot slip — must submit by end of semester
+    - Total duration: 6 months (one semester)
 
 
 goals:
@@ -79,9 +73,6 @@ resources:
     - Public repositories: Kaggle, UCI ML Repository, PhysioNet
     - Can download datasets up to ~2 GB (storage constraint)
     - Cannot collect new data or access hospital/clinical databases
-    - Existing datasets already on hand:
-        - PPG + ECG simultaneous recording dataset (multimodal, ~500 subjects)
-        - Publicly available Indonesian text dataset (backup option)
 
   budget:
     api_costs: Minimal — $0 to $20/month total for all LLM API usage
@@ -100,15 +91,3 @@ preferences:
     - Favour pipelines that combine existing techniques in a new way over
       designing new algorithms from scratch
 
-  output_format:
-    - Clean Python code with README and requirements.txt on GitHub
-    - Figures and plots suitable for thesis inclusion (PDF or high-res PNG)
-    - Results table comparing proposed method vs. at least 2 baselines
-    - Short demo or notebook walkthrough preferred
-
-  writing_context:
-    - Thesis written in Indonesian (Bahasa Indonesia), but code and
-      variable names in English
-    - Must follow university thesis formatting guidelines
-    - Will translate key sections to English if submitting to an
-      international venue

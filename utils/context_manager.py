@@ -13,7 +13,7 @@ Phase-aware character limits per slot:
     Converge  → 100 chars   (dataset name/label only — ideas already embed full context)
 
   Literature:
-    Diverge   → 2500 chars  (full briefing — models need landscape context to avoid re-inventing)
+    Diverge   → 7000 chars  (full briefing — models need as much landscape context as possible)
     Criticize → 1000 chars  (enough to assess novelty against known work)
     Converge  → none        (synthesis works from ideas/critiques, not raw papers)
 """
@@ -78,7 +78,7 @@ class _Slot:
             }
         else:  # literature
             return {
-                "diverge":   est(self.truncate(2500)),
+                "diverge":   est(self.truncate(7000)),
                 "criticize": est(self.truncate(1000)),
                 "converge":  0,
             }
@@ -98,10 +98,10 @@ class ContextManager:
     # ── Per-phase helpers ───────────────────────────────────────────────────
 
     def for_diverge(self) -> dict:
-        """Dataset: 2500 chars. Literature: 2500 chars (salience-ordered)."""
+        """Dataset: 2500 chars. Literature: 7000 chars (salience-ordered)."""
         return {
             "dataset":    self.dataset.truncate(2500),
-            "literature": self.literature.truncate(2500),
+            "literature": self.literature.truncate(7000),
         }
 
     def for_criticize(self) -> dict:

@@ -156,10 +156,10 @@ Paste a summary of related work in your area. This tells the council what has al
 
 **Framing tip:** describe the landscape as *background context*, not as a list of gaps to fill. Models told "here are the gaps" will fill them incrementally. Models told "here is what exists and why it falls short" tend to go sideways — proposing genuinely novel framings rather than obvious extensions.
 
-**Target length:** ~400 words / ~2500 characters. A helper prompt for condensing a long literature review is provided in [`literature_summarization_prompt.md`](literature_summarization_prompt.md).
+**Target length:** ~1000 words / ~7000 characters. A helper prompt for condensing a long literature review is provided in [`literature_summarization_prompt.md`](literature_summarization_prompt.md).
 
 Context is injected at:
-- **Diverge** — full summary (2500 chars), so models know the landscape before generating ideas
+- **Diverge** — full summary (7000 chars), so models know the landscape before generating ideas
 - **Criticize** — first 1000 chars, to assess novelty against known work
 - **Converge** — dropped (synthesis works from ideas and critiques, not raw papers)
 

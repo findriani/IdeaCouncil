@@ -26,7 +26,7 @@ Given the following literature, produce a compact briefing that covers:
 Rules:
 - Write as background context, NOT as a list of suggested research directions
 - Do not use language like "future work should..." or "a promising direction is..."
-- Target length: ~400 words / ~2500 characters
+- Target length: ~1000 words / ~7000 characters
 - A creative reader should finish this and feel informed, not instructed
 
 Literature to summarize:

@@ -220,7 +220,7 @@ def _summarize_context(text: str, prompt_type: str, api_key: str) -> str:
 Rules:
 - Write as background context, NOT as a list of suggested research directions
 - Do not use language like "future work should..." or "a promising direction is..."
-- Target length: ~400 words / ~2500 characters
+- Target length: ~1000 words / ~7000 characters
 - A creative reader should finish this and feel informed, not instructed"""
     else:  # dataset
         system = "You are preparing a dataset briefing for a research brainstorming session."
@@ -248,7 +248,7 @@ Rules:
             {"role": "user", "content": f"{instruction}\n\nText to summarize:\n\n{text}"}
         ],
         "temperature": 0.3,
-        "max_tokens": 900
+        "max_tokens": 2000
     }
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -524,7 +524,7 @@ def main():
                 ),
                 key_prefix="literature",
                 prompt_type="literature",
-                target_chars=2500
+                target_chars=7000
             )
 
             # Build context manager and show token estimate

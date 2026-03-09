@@ -25,7 +25,7 @@ class Settings:
 
         # Load configurations
         self.models_config = self._load_yaml("models.yaml")
-        self.user_profile = self._load_yaml("user_profile.yaml")
+        self.user_profile = self._load_user_profile()
 
         # API configuration - Handle both local .env and Streamlit Cloud secrets
         self.openrouter_api_key = self._get_api_key()
@@ -45,6 +45,15 @@ class Settings:
 
         with open(filepath, 'r', encoding='utf-8') as f:
             return yaml.safe_load(f)
+
+    def _load_user_profile(self) -> Dict[str, Any]:
+        """Load user profile, falling back to example if personal profile is absent."""
+        for filename in ("user_profile.yaml", "user_profile.example.yaml"):
+            filepath = self.config_dir / filename
+            if filepath.exists():
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f)
+        return {}
 
     def _get_api_key(self) -> str:
         """

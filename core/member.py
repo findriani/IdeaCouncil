@@ -8,8 +8,18 @@ from utils.logger import logger
 import json
 import re
 
+
 class CouncilMember:
     """Represents a single council member powered by an LLM."""
+
+    IDEA_FIELDS = (
+        ("title", "Title"),
+        ("summary", "Summary"),
+        ("methodology", "Methodology"),
+        ("feasibility", "Feasibility"),
+        ("timeline", "Timeline"),
+        ("expected_outcomes", "Expected Outcomes"),
+    )
 
     def __init__(
         self,
@@ -153,44 +163,101 @@ class CouncilMember:
         """
         ideas = []
 
-        # Split by "IDEA" markers
-        idea_sections = re.split(r'IDEA\s+\d+:', content, flags=re.IGNORECASE)
-
-        for section in idea_sections[1:]:  # Skip first empty section
+        for section in self._split_idea_sections(content):
             idea = {}
 
-            # Extract fields using regex
-            title_match = re.search(r'Title:\s*(.+)', section, re.IGNORECASE)
-            if title_match:
-                idea['title'] = title_match.group(1).strip()
+            for key, label in self.IDEA_FIELDS:
+                value = self._extract_idea_field(
+                    section,
+                    label,
+                    single_line=(key == "title")
+                )
+                if value:
+                    idea[key] = value
 
-            summary_match = re.search(r'Summary:\s*(.+?)(?=\n[A-Z]|\Z)', section, re.IGNORECASE | re.DOTALL)
-            if summary_match:
-                idea['summary'] = summary_match.group(1).strip()
+            idea["member_id"] = self.member_id
+            idea["full_description"] = section.strip()
 
-            methodology_match = re.search(r'Methodology:\s*(.+?)(?=\n[A-Z]|\Z)', section, re.IGNORECASE | re.DOTALL)
-            if methodology_match:
-                idea['methodology'] = methodology_match.group(1).strip()
-
-            feasibility_match = re.search(r'Feasibility:\s*(.+?)(?=\n[A-Z]|\Z)', section, re.IGNORECASE | re.DOTALL)
-            if feasibility_match:
-                idea['feasibility'] = feasibility_match.group(1).strip()
-
-            timeline_match = re.search(r'Timeline:\s*(.+?)(?=\n[A-Z]|\Z)', section, re.IGNORECASE | re.DOTALL)
-            if timeline_match:
-                idea['timeline'] = timeline_match.group(1).strip()
-
-            outcomes_match = re.search(r'Expected Outcomes:\s*(.+?)(?=\n[A-Z]|\Z)', section, re.IGNORECASE | re.DOTALL)
-            if outcomes_match:
-                idea['expected_outcomes'] = outcomes_match.group(1).strip()
-
-            idea['member_id'] = self.member_id
-            idea['full_description'] = section.strip()
-
-            if idea.get('title'):  # Only add if we got at least a title
+            if idea.get("title") and not self._is_placeholder_title(idea["title"]):
                 ideas.append(idea)
 
         return ideas
+
+    def _split_idea_sections(self, content: str) -> List[str]:
+        """Split raw model output into idea-sized sections."""
+        normalized = content.replace("\r\n", "\n")
+
+        # Preferred format from the diverge prompt.
+        idea_sections = re.split(
+            r"(?im)^\s*IDEA\s+\d+\s*:\s*",
+            normalized
+        )
+        if len(idea_sections) > 1:
+            return [section.strip() for section in idea_sections[1:] if section.strip()]
+
+        # Fallback for models like Kimi that often skip IDEA markers but still
+        # emit repeated Title/Summary/Methodology blocks after a reasoning preamble.
+        title_matches = list(re.finditer(r"(?im)^\s*(?:\*\*)?Title(?:\*\*)?\s*:", normalized))
+        sections = []
+        for idx, match in enumerate(title_matches):
+            end = title_matches[idx + 1].start() if idx + 1 < len(title_matches) else len(normalized)
+            section = normalized[match.start():end].strip()
+            if section:
+                sections.append(section)
+        return sections
+
+    def _extract_idea_field(
+        self,
+        section: str,
+        label: str,
+        single_line: bool = False
+    ) -> str:
+        """Extract a field value from a structured idea section."""
+        field_names = "|".join(re.escape(field_label) for _, field_label in self.IDEA_FIELDS)
+        pattern = (
+            rf"(?is)(?:^|\n)\s*(?:\*\*)?{re.escape(label)}(?:\*\*)?\s*:\s*(.+?)"
+            rf"(?=(?:\n\s*(?:\*\*)?(?:{field_names})(?:\*\*)?\s*:)|\Z)"
+        )
+        matches = re.findall(pattern, section)
+        if not matches:
+            return ""
+
+        cleaned_values = [self._clean_idea_field_value(value, single_line=single_line) for value in matches]
+        cleaned_values = [value for value in cleaned_values if value]
+        if not cleaned_values:
+            return ""
+
+        if label == "Title":
+            for value in cleaned_values:
+                if not self._is_placeholder_title(value):
+                    return value
+
+        return cleaned_values[0]
+
+    @staticmethod
+    def _clean_idea_field_value(value: str, single_line: bool = False) -> str:
+        """Normalize extracted field text without discarding multiline details."""
+        stripped_lines = [line.strip() for line in value.strip().splitlines() if line.strip()]
+        if not stripped_lines:
+            return ""
+
+        if single_line:
+            return stripped_lines[0].strip("*`_ ").strip()
+
+        cleaned = "\n".join(stripped_lines).strip()
+        return cleaned.strip("*`_ ").strip()
+
+    @staticmethod
+    def _is_placeholder_title(title: str) -> bool:
+        """Detect prompt-template placeholders that should not be treated as real titles."""
+        normalized = re.sub(r"[\[\]\*\`_]", "", title).strip().lower()
+        placeholder_phrases = (
+            "clear, descriptive title",
+            "idea title",
+            "descriptive title",
+            "title here",
+        )
+        return any(phrase in normalized for phrase in placeholder_phrases)
 
     def _parse_critiques(self, content: str) -> List[Dict[str, Any]]:
         """

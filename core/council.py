@@ -187,10 +187,11 @@ class Council:
         temperature = diverge_settings.get("temperature", 0.9)
         max_tokens = diverge_settings.get("max_tokens", 2000)
 
-        # Build prompt per member — reasoning models get a structured-output instruction
+        # Build prompt per member - reasoning models get a structured-output instruction
         tasks = []
         for member in self.members:
             is_reasoning = member.model_config.get("is_reasoning_model", False)
+            member_max_tokens = member.model_config.get("diverge_max_tokens", max_tokens)
             messages = self.prompt_builder.build_diverge_messages(
                 user_prompt=user_prompt,
                 ideas_per_member=self.ideas_per_member,
@@ -200,10 +201,9 @@ class Council:
             task = member.generate_ideas(
                 messages=messages,
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=member_max_tokens
             )
             tasks.append(task)
-
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results and track costs
@@ -514,3 +514,4 @@ class Council:
 
         for member in self.members:
             member.reset_usage()
+

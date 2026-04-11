@@ -18,6 +18,7 @@ from utils.logger import logger
 from utils.validator import Validator, ValidationError
 from utils.report_generator import ReportGenerator
 from utils.context_manager import ContextManager
+from utils.session_snapshot import SessionSnapshotStore
 
 # Import UI components
 from ui.sidebar import render_sidebar, render_profile_editor
@@ -47,6 +48,85 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+snapshot_store = SessionSnapshotStore(settings.outputs_dir)
+
+
+def _session_query_param() -> str:
+    """Read the current session id from the URL query params."""
+    try:
+        value = st.query_params.get("session", "")
+        if isinstance(value, list):
+            return value[0] if value else ""
+        return value or ""
+    except Exception:
+        return ""
+
+
+def _ensure_session_query_param(session_id: str) -> None:
+    """Keep the current session id in the browser URL."""
+    try:
+        st.query_params["session"] = session_id
+    except Exception:
+        pass
+
+
+def _build_session_snapshot() -> dict:
+    """Capture the restorable parts of Streamlit session state."""
+    context_manager = st.session_state.get("context_manager") or ContextManager()
+    cost_tracker = st.session_state.get("cost_tracker") or CostTracker()
+    return {
+        "session_id": st.session_state.get("session_id", ""),
+        "user_prompt": st.session_state.get("user_prompt_input", st.session_state.get("user_prompt", "")),
+        "selected_models": st.session_state.get("selected_models", []),
+        "results_history": st.session_state.get("results_history", []),
+        "iteration_count": st.session_state.get("iteration_count", 0),
+        "qa_history": st.session_state.get("qa_history", []),
+        "cost_requests": getattr(cost_tracker, "requests", []),
+        "dataset_context": context_manager.dataset.full(),
+        "literature_context": context_manager.literature.full(),
+    }
+
+
+def _persist_session_snapshot() -> None:
+    """Save the current session snapshot to disk for later restore."""
+    session_id = st.session_state.get("session_id", "")
+    if not session_id:
+        return
+    snapshot_store.save(session_id, _build_session_snapshot())
+    _ensure_session_query_param(session_id)
+
+
+def _restore_session_snapshot(session_id: str) -> bool:
+    """Restore a previously saved session snapshot from disk."""
+    snapshot = snapshot_store.load(session_id)
+    if not snapshot:
+        return False
+
+    tracker = CostTracker()
+    tracker.requests = snapshot.get("cost_requests", [])
+    dataset_context = snapshot.get("dataset_context", "")
+    literature_context = snapshot.get("literature_context", "")
+
+    st.session_state.council = None
+    st.session_state.iteration_count = snapshot.get("iteration_count", len(snapshot.get("results_history", [])))
+    st.session_state.results_history = snapshot.get("results_history", [])
+    st.session_state.user_prompt = snapshot.get("user_prompt", "")
+    st.session_state.user_prompt_input = snapshot.get("user_prompt", "")
+    st.session_state.qa_history = snapshot.get("qa_history", [])
+    st.session_state.selected_models = snapshot.get("selected_models", [])
+    st.session_state.restore_selected_models_once = snapshot.get("selected_models", [])
+    st.session_state.cost_tracker = tracker
+    st.session_state.context_manager = ContextManager(
+        dataset=dataset_context,
+        literature=literature_context,
+    )
+    st.session_state.dataset_typed = dataset_context
+    st.session_state.literature_typed = literature_context
+    st.session_state.session_id = session_id
+    st.session_state.snapshot_restored = True
+    return True
+
 
 
 def initialize_session_state():
@@ -80,6 +160,27 @@ def initialize_session_state():
 
     if "context_manager" not in st.session_state:
         st.session_state.context_manager = ContextManager()
+
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = _session_query_param() or snapshot_store.new_session_id()
+
+    if "snapshot_restore_checked" not in st.session_state:
+        st.session_state.snapshot_restore_checked = False
+
+    if "snapshot_restored" not in st.session_state:
+        st.session_state.snapshot_restored = False
+
+    if "restore_selected_models_once" not in st.session_state:
+        st.session_state.restore_selected_models_once = None
+
+    _ensure_session_query_param(st.session_state.session_id)
+
+    if not st.session_state.snapshot_restore_checked:
+        restore_session_id = _session_query_param()
+        if restore_session_id and not st.session_state.results_history:
+            _restore_session_snapshot(restore_session_id)
+        st.session_state.snapshot_restore_checked = True
+
 
 
 async def run_iteration_async(
@@ -146,6 +247,7 @@ def run_iteration(
         # Store results
         st.session_state.results_history.append(results)
         st.session_state.iteration_count += 1
+        _persist_session_snapshot()
 
         # Display phase results if verbose
         if verbosity in ["Progress", "Full"]:
@@ -368,6 +470,9 @@ def main():
     api_key, selected_models, config = render_sidebar()
 
     # Store in session state
+    restored_models = st.session_state.pop("restore_selected_models_once", None)
+    if restored_models:
+        selected_models = restored_models
     st.session_state.api_key = api_key
     st.session_state.selected_models = selected_models
 
@@ -378,9 +483,10 @@ def main():
 
     # Check if configuration is valid
     config_valid = config["api_key_valid"] and config["models_valid"]
+    has_saved_results = bool(st.session_state.results_history)
 
-    if not config_valid:
-        st.warning("⚠️ Please configure your API key and select models in the sidebar to get started.")
+    if not config_valid and not has_saved_results:
+        st.warning("?? Please configure your API key and select models in the sidebar to get started.")
         st.info("""
         **Getting Started:**
         1. Get your API key from [OpenRouter](https://openrouter.ai/keys)
@@ -389,6 +495,10 @@ def main():
         4. Enter your research prompt below
         """)
         return
+
+    if not config_valid and has_saved_results:
+        st.info("Showing restored results from a saved session. Re-enter your API key and model selection only if you want to run more iterations or ask new questions.")
+
 
     # Main content area
     col1, col2 = st.columns([2, 1])
@@ -613,18 +723,31 @@ def main():
             logger.error(f"Council initialization error: {e}", exc_info=True)
 
     # Handle new session button
+    # Handle new session button
     if new_session_button:
         st.session_state.council = None
         st.session_state.iteration_count = 0
         st.session_state.results_history = []
         st.session_state.qa_history = []
         st.session_state.cost_tracker.reset()
+        st.session_state.context_manager = ContextManager()
+        st.session_state.user_prompt = ""
+        st.session_state.user_prompt_input = ""
+        st.session_state.dataset_typed = ""
+        st.session_state.literature_typed = ""
+        st.session_state.session_id = snapshot_store.new_session_id()
+        st.session_state.snapshot_restored = False
+        st.session_state.snapshot_restore_checked = True
+        st.session_state.restore_selected_models_once = None
+        _ensure_session_query_param(st.session_state.session_id)
         st.rerun()
+
 
     # Display results if available
     if st.session_state.results_history:
         st.divider()
 
+        st.caption("Results are saved for this URL. If the mobile browser session expires, reopening the same link should restore them.")
         # Quick summary
         display_quick_summary(st.session_state.results_history)
 
@@ -742,6 +865,7 @@ def main():
                             "question": qa_question,
                             "answer": answer,
                         })
+                        _persist_session_snapshot()
                         st.rerun()
                     except Exception as e:
                         st.error(f"Failed to get answer: {e}")

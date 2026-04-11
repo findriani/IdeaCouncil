@@ -7,19 +7,17 @@ research_interests:
   primary_fields:
     - Machine Learning
     - Computer Science
-    - Biomedical Signal Processing
+    - Deep Learning
 
   specific_topics:
-    - Physiological signal classification (ECG, PPG, EEG)
     - Lightweight model architectures for edge deployment
-    - Feature engineering for time-series data
-    - Data augmentation for imbalanced biomedical datasets
+    - Feature engineering and feature extraction
+    - applied machine learning
 
   avoid_topics:
     - Pure NLP or large language model training (out of scope)
     - Wet-lab biology or chemistry experiments
     - Theoretical mathematics with no implementation component
-    - Research requiring ethics approval for new human data collection (existing public datasets only)
 
 
 constraints:
@@ -27,35 +25,30 @@ constraints:
     - Undergraduate final-year student (Informatics / Computer Science)
     - Comfortable with Python, scikit-learn, PyTorch basics
     - Familiar with pandas, NumPy, matplotlib
-    - Limited experience with advanced mathematics (no measure theory, no advanced statistics beyond basic hypothesis testing)
-    - No prior publication experience
-
+    
   technical:
     - No access to HPC clusters or institutional GPU servers
     - Deep learning models must fit in Google Colab free tier (T4 GPU, ~12 GB VRAM, sessions reset after ~12 hours)
     - Prefer models under 100M parameters unless pre-trained weights are publicly available
-    - Cannot collect new primary data (surveys, sensors, clinical trials)
-    - No MATLAB license - Python only
 
   timeline:
-    - Total duration 6 months (one semester)
+    - Total duration 6 months
 
 
 goals:
-  primary: "Publishable at a low-to-mid tier regional conference or Scopus-indexed Q3/Q4 journal. Novelty sufficient to clear basic peer review - not a top-venue paper."
+  primary: "Publishable at a mid tier regional conference or Scopus-indexed Q2/Q3 journal. Novelty sufficient to clear basic peer review."
   secondary:
     - Working implementation with clear documented code on GitHub
     - Results visualised with charts or demo (not just tables of numbers)
-    - Methodology clear enough that a fellow undergraduate could reproduce it
-    - Ideally applicable to Indonesian healthcare or environmental context
+    - Methodology clear enough that a fellow could reproduce it
+    - Ideally applicable to Indonesian healthcare or agricultural or environmental context
 
 
 resources:
   computational:
-    - Personal laptop - Windows 11, 8 GB RAM, Intel Core i5, no discrete GPU
+    - Personal laptop - Windows 11, 16 GB RAM, Intel Core i5, no discrete GPU
     - Google Colab free tier (T4 GPU, ~12 GB VRAM)
     - Google Drive 15 GB for dataset storage
-    - No cloud compute budget (AWS, GCP, Azure are out)
 
   datasets:
     - Public repositories - Kaggle, UCI ML Repository, PhysioNet

@@ -117,6 +117,7 @@ available_models:
     context_window: 262144
     supports_streaming: true
     is_reasoning_model: true
+    diverge_max_tokens: 8000
     recommended_for: ["diverge", "criticize"]
 
   # ── Zhipu (GLM) ────────────────────────────────────────────────────────────
@@ -216,3 +217,4 @@ phase_settings:
     temperature: 0.3
     max_tokens: 6000
     top_ideas_count: 6
+

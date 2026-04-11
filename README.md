@@ -59,6 +59,7 @@ Your research prompt
 - **Literature context** — paste your related work so the council avoids re-proposing already-done ideas
 - **Built-in summarizer** — one-click summarization of long context using Gemini Flash Lite (cheap, fast)
 - **Q&A panel** — ask follow-up questions about any idea after the council runs
+- **Session persistence** — session auto-saved after each iteration; reopen the same URL to restore results
 - **Live pricing** — model prices fetched from OpenRouter at startup, not hardcoded
 - **Cost tracking** — real-time breakdown by phase and model
 - **Downloadable reports** — full markdown report + concise top recommendations
@@ -211,8 +212,12 @@ IdeaCouncil/
 │   ├── sidebar.py
 │   ├── progress_display.py
 │   └── report_viewer.py
+├── tools/
+│   ├── check_kimi_parser.py       # Offline parser test for Kimi output format
+│   └── check_kimi_live.py         # Live OpenRouter test for Kimi parsing
 └── utils/
     ├── context_manager.py         # Phase-aware context truncation
+    ├── session_snapshot.py        # Session save/restore (URL-based persistence)
     ├── report_generator.py
     ├── validator.py
     └── logger.py

@@ -495,9 +495,33 @@ class Council:
                 f"Novelty critic: {novelty_member.member_id} reviewing "
                 f"{len(all_anonymized)} ideas (including own)"
             )
+        elif novelty_critic_key in self.model_configs:
+            # Novelty critic not in critic_members (e.g. gemini3flash) — instantiate on-the-fly
+            config = {**self.model_configs[novelty_critic_key], "model_key": novelty_critic_key}
+            novelty_member = CouncilMember(
+                member_id=f"{novelty_critic_key}_novelty",
+                model_config=config,
+                api_client=self.api_client,
+            )
+            lit_report = (literature_check_result or {}).get("report", "")
+            is_reasoning = novelty_member.model_config.get("is_reasoning_model", False)
+            novelty_messages = self.prompt_builder.build_novelty_critique_messages(
+                all_ideas=all_anonymized,
+                literature_check_report=lit_report,
+                is_reasoning_model=is_reasoning,
+            )
+            novelty_coro = novelty_member.assess_novelty(
+                messages=novelty_messages,
+                temperature=temperature,
+                max_tokens=novelty_max_tokens,
+            )
+            logger.info(
+                f"Novelty critic: {novelty_member.member_id} (on-the-fly) reviewing "
+                f"{len(all_anonymized)} ideas"
+            )
         else:
             logger.warning(
-                f"Novelty critic model key '{novelty_critic_key}' not found in critic_members — "
+                f"Novelty critic model key '{novelty_critic_key}' not found in critic_members or model_configs — "
                 "novelty pass skipped"
             )
 

@@ -119,10 +119,10 @@ def display_report(
             controversy = iteration.get("controversy", {})
             criticize_data = iteration.get("criticize", {})
 
-            # Kimi Novelty Assessment (separate dedicated pass)
+            # Novelty Assessment (separate dedicated pass — currently Gemini 3 Flash)
             kimi_novelty = criticize_data.get("kimi_novelty", {})
             if kimi_novelty:
-                with st.expander("**Kimi K2.6 — Novelty Assessments** (dedicated novelty critic)", expanded=False):
+                with st.expander("**Gemini 3 Flash — Novelty Assessments** (dedicated novelty critic)", expanded=False):
                     assessments = kimi_novelty.get("assessments", [])
                     if not assessments:
                         raw = kimi_novelty.get("raw_response", "")

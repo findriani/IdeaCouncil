@@ -84,7 +84,7 @@ def display_phase_results(phase_name: str, results: dict, verbosity: str = "Full
             for member_id, data in results.items():
                 if member_id == "kimi_novelty":
                     assessments = data.get("assessments", [])
-                    st.write(f"**Kimi K2.6 (novelty pass)** — {len(assessments)} idea(s) assessed")
+                    st.write(f"**Gemini 3 Flash (novelty pass)** — {len(assessments)} idea(s) assessed")
                 else:
                     critiques = data.get("critiques", [])
                     st.write(f"**{member_id}** — evaluated {len(critiques)} idea(s)")

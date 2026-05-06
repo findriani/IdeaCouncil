@@ -109,24 +109,32 @@ class LiteratureChecker:
             empty["model"] = self.summarizer_model_id
             return empty
 
-        # ── Step 2: Fetch papers in parallel (S2 + OA per query) ─────────────
-        tasks: List = []
-        task_query_labels: List[str] = []
-        for query in queries:
-            tasks.append(self._ss.search(query, year_from, year_to, limit=papers_per_query))
-            tasks.append(self._oa.search(query, year_from, year_to, limit=papers_per_query))
-            task_query_labels.extend([query, query])
+        # ── Step 2: Fetch papers ──────────────────────────────────────────────
+        # OpenAlex: fire all queries in parallel (lenient rate limits)
+        oa_tasks = [
+            self._oa.search(q, year_from, year_to, limit=papers_per_query)
+            for q in queries
+        ]
+        oa_results = await asyncio.gather(*oa_tasks, return_exceptions=True)
 
-        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+        # SemanticScholar: run sequentially with a 1.5s gap to avoid 429s
+        ss_results: List = []
+        for i, query in enumerate(queries):
+            if i > 0:
+                await asyncio.sleep(1.5)
+            ss_results.append(
+                await self._ss.search(query, year_from, year_to, limit=papers_per_query)
+            )
 
         flat_papers: List[Dict[str, Any]] = []
-        for result, query_label in zip(raw_results, task_query_labels):
-            if isinstance(result, Exception):
-                logger.warning(f"Literature search error: {result}")
-                continue
-            for paper in result:
-                paper["query_label"] = query_label
-                flat_papers.append(paper)
+        for query, oa_result, ss_result in zip(queries, oa_results, ss_results):
+            for result in (oa_result, ss_result):
+                if isinstance(result, Exception):
+                    logger.warning(f"Literature search error: {result}")
+                    continue
+                for paper in result:
+                    paper["query_label"] = query
+                    flat_papers.append(paper)
 
         if not flat_papers:
             logger.warning("Literature check: all API calls returned empty — skipping")

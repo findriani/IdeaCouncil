@@ -99,6 +99,18 @@ available_models:
     supports_streaming: true
     recommended_for: ["diverge", "criticize"]
 
+  # ── Novelty critic (novelty-only pass — not a selectable generator) ─────────
+  gemini3flash:
+    openrouter_id: "google/gemini-3-flash-preview"
+    display_name: "Gemini 3 Flash"
+    provider: "Google"
+    pricing:
+      input_per_1m: 0.10
+      output_per_1m: 0.40
+    context_window: 1048576
+    supports_streaming: true
+    is_reasoning_model: false
+
 
 # Preset configurations
 presets:
@@ -133,8 +145,8 @@ phase_settings:
     exclude_own_ideas: true
     # Only these model keys participate as critics (all models still generate ideas in diverge)
     critic_models: ["claude_sonnet_latest", "kimi", "deepseek", "chatgpt"]
-    novelty_critic: "kimi"         # dedicated novelty scorer — reviews ALL ideas including own
-    novelty_max_tokens: 20000      # Kimi needs more tokens for novelty assessments
+    novelty_critic: "gemini3flash"  # dedicated novelty scorer — reviews ALL ideas including own
+    novelty_max_tokens: 5000       # non-reasoning model, shorter output is sufficient
 
   converge:
     temperature: 0.3

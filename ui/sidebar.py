@@ -158,13 +158,6 @@ def render_sidebar() -> Tuple[str, List[str], Dict[str, Any]]:
         help="Number of top ideas to recommend"
     )
 
-    verbosity = st.sidebar.select_slider(
-        "Progress Detail",
-        options=["Minimal", "Progress", "Full"],
-        value="Progress",
-        help="How much detail to show during processing"
-    )
-
     # User Profile
     st.sidebar.divider()
     st.sidebar.subheader("User Profile")
@@ -184,7 +177,7 @@ def render_sidebar() -> Tuple[str, List[str], Dict[str, Any]]:
         "max_iterations": max_iterations,
         "ideas_per_member": ideas_per_member,
         "top_ideas_count": top_ideas_count,
-        "verbosity": verbosity,
+        "verbosity": "Full",
         "api_key_valid": api_key_valid,
         "models_valid": models_valid
     }

@@ -60,7 +60,7 @@ Your research prompt
   ┌─────────────────────────────────────────────┐
   │  CRITICIZE                                  │
   │                                             │
-  │  Track A  Claude · GPT · Kimi · DeepSeek    │
+  │  Track A  Qwen · GPT · Kimi · DeepSeek       │
   │           → Feasibility + Impact            │
   │                                             │
   │  Track B  Gemini 3 Flash (dedicated pass)    │
@@ -114,7 +114,7 @@ This report is passed directly to the novelty critic in the next step. Semantic 
 
 All ideas are anonymized and shuffled before critique. Critics see the proposal, not the model that wrote it.
 
-Four models always serve as general critics, regardless of which generators you selected: **Claude Sonnet**, **GPT-5.4**, **Kimi K2.6**, and **DeepSeek V4 Pro**. Each scores every idea it reviews on **Feasibility** and **Impact** (1–5 each), plus a written steelman, assessment, and suggestions. All four critics run in parallel.
+Four models always serve as general critics, regardless of which generators you selected: **Qwen3.6 Plus**, **GPT-5.4**, **Kimi K2.6**, and **DeepSeek V4 Pro**. Each scores every idea it reviews on **Feasibility** and **Impact** (1–5 each), plus a written steelman, assessment, and suggestions. All four critics run in parallel.
 
 **Gemini 3 Flash** makes a second separate pass as the dedicated novelty critic. In this pass it receives all ideas (including those from Kimi, if Kimi is a generator), the full uploaded literature context (up to 7,000 characters), and the live literature search report. It scores each idea on **Novelty only** (1–5), identifying the closest prior work and justifying whether the idea is genuinely original. Gemini 3 Flash is used here because it is fast and inexpensive — novelty scoring needs breadth across all ideas, not deep reasoning.
 

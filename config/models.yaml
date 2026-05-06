@@ -144,7 +144,7 @@ phase_settings:
     max_tokens: 12000
     exclude_own_ideas: true
     # Only these model keys participate as critics (all models still generate ideas in diverge)
-    critic_models: ["claude_sonnet_latest", "kimi", "deepseek", "chatgpt"]
+    critic_models: ["qwen", "kimi", "deepseek", "chatgpt"]
     novelty_critic: "gemini3flash"  # dedicated novelty scorer — reviews ALL ideas including own
     novelty_max_tokens: 5000       # non-reasoning model, shorter output is sufficient
 

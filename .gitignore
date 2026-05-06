@@ -43,6 +43,10 @@ config/user_profile.yaml
 Minutestep/
 PPG-ECG/
 data/
+temp/
+
+# Generated files
+ideacouncil_claude_prompt.txt
 
 # Internal dev/implementation notes
 FINAL_SUMMARY.md

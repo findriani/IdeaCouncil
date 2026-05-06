@@ -63,7 +63,7 @@ Your research prompt
   │  Track A  Claude · GPT · Kimi · DeepSeek    │
   │           → Feasibility + Impact            │
   │                                             │
-  │  Track B  Kimi K2.6 (dedicated pass)        │
+  │  Track B  Gemini 3 Flash (dedicated pass)    │
   │           → Novelty · full lit context      │
   └─────────────────────────────────────────────┘
          │
@@ -116,13 +116,13 @@ All ideas are anonymized and shuffled before critique. Critics see the proposal,
 
 Four models always serve as general critics, regardless of which generators you selected: **Claude Sonnet**, **GPT-5.4**, **Kimi K2.6**, and **DeepSeek V4 Pro**. Each scores every idea it reviews on **Feasibility** and **Impact** (1–5 each), plus a written steelman, assessment, and suggestions. All four critics run in parallel.
 
-**Kimi K2.6** makes a second separate pass as the dedicated novelty critic. In this pass it receives all ideas (including its own), the full uploaded literature context (up to 7,000 characters), and the live literature search report. It scores each idea on **Novelty only** (1–5), identifying the closest prior work and justifying whether the idea is genuinely original.
+**Gemini 3 Flash** makes a second separate pass as the dedicated novelty critic. In this pass it receives all ideas (including those from Kimi, if Kimi is a generator), the full uploaded literature context (up to 7,000 characters), and the live literature search report. It scores each idea on **Novelty only** (1–5), identifying the closest prior work and justifying whether the idea is genuinely original. Gemini 3 Flash is used here because it is fast and inexpensive — novelty scoring needs breadth across all ideas, not deep reasoning.
 
 After all scores are in, IdeaCouncil computes score variance across the four general critics. Ideas where critics strongly disagree on Feasibility or Impact are flagged as **controversial** in the Critiques tab. A controversial flag means the idea's merits are genuinely debatable — worth reading the individual assessments rather than just the averages.
 
 ### 4. Converge: Rank Recommendations
 
-Claude Sonnet always acts as the coordinator, regardless of which models you selected. It receives every idea, all written critiques, and Kimi's novelty scores, then produces a ranked list of the top six recommendations.
+Claude Sonnet always acts as the coordinator, regardless of which models you selected. It receives every idea, all written critiques, and the novelty scores from Gemini 3 Flash, then produces a ranked list of the top six recommendations.
 
 Novelty is weighted most heavily in the ranking because originality is the hardest bar to clear for publication. Impact comes second, feasibility third. The coordinator uses qualitative judgment across all critique text, not just the numerical scores.
 

@@ -117,11 +117,11 @@ class LiteratureChecker:
         ]
         oa_results = await asyncio.gather(*oa_tasks, return_exceptions=True)
 
-        # SemanticScholar: run sequentially with a 1.5s gap to avoid 429s
+        # SemanticScholar: run sequentially with a 2s gap to stay under rate limit
         ss_results: List = []
         for i, query in enumerate(queries):
             if i > 0:
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(2.0)
             ss_results.append(
                 await self._ss.search(query, year_from, year_to, limit=papers_per_query)
             )

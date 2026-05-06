@@ -6,6 +6,7 @@ Both APIs are free and require no authentication key.
 - OpenAlex:        https://api.openalex.org/works
 """
 
+import asyncio
 from typing import Any, Dict, List
 import httpx
 from utils.logger import logger
@@ -38,22 +39,37 @@ class SemanticScholarClient:
         }
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.get(self.BASE_URL, params=params)
-                response.raise_for_status()
-                data = response.json()
-                papers = []
-                for item in data.get("data", []):
-                    papers.append({
-                        "title": item.get("title") or "",
-                        "abstract": item.get("abstract") or "",
-                        "year": item.get("year"),
-                        "citation_count": item.get("citationCount", 0),
-                        "source": "SemanticScholar",
-                    })
-                return papers
+                for attempt in range(2):
+                    response = await client.get(self.BASE_URL, params=params)
+                    if response.status_code == 429:
+                        if attempt == 0:
+                            # Honour Retry-After header; fall back to 5s; cap at 15s
+                            retry_after = int(response.headers.get("Retry-After", "5"))
+                            wait = min(retry_after, 15)
+                            logger.warning(
+                                f"SemanticScholar 429 for '{query}' — retrying in {wait}s"
+                            )
+                            await asyncio.sleep(wait)
+                            continue
+                        logger.warning(
+                            f"SemanticScholar search failed after retry for '{query}'"
+                        )
+                        return []
+                    response.raise_for_status()
+                    data = response.json()
+                    papers = []
+                    for item in data.get("data", []):
+                        papers.append({
+                            "title": item.get("title") or "",
+                            "abstract": item.get("abstract") or "",
+                            "year": item.get("year"),
+                            "citation_count": item.get("citationCount", 0),
+                            "source": "SemanticScholar",
+                        })
+                    return papers
         except Exception as e:
             logger.warning(f"SemanticScholar search failed for '{query}': {e}")
-            return []
+        return []
 
 
 class OpenAlexClient:

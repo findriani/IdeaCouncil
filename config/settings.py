@@ -34,7 +34,7 @@ class Settings:
         # Session defaults
         self.max_iterations = 3
         self.max_concurrent_requests = 5
-        self.request_timeout = 60
+        self.request_timeout = 600   # seconds — models can take 5–8 min for long outputs
         self.max_retries = 3
 
     def _load_yaml(self, filename: str) -> Dict[str, Any]:
@@ -144,35 +144,41 @@ class Settings:
 
         total_cost = 0.0
 
-        for model_key in model_keys:
-            model_config = self.get_model_config(model_key)
-            if not model_config:
-                continue
-
-            pricing = model_config.get("pricing", {})
-            input_cost_per_1m = pricing.get("input_per_1m", 0)
-            output_cost_per_1m = pricing.get("output_per_1m", 0)
-
-            # Calculate cost for this model
-            input_cost = (input_tokens_estimate / 1_000_000) * input_cost_per_1m
-            output_cost = (max_tokens / 1_000_000) * output_cost_per_1m
-
-            # Multiply by usage count based on phase
-            if phase == "diverge":
-                # Each member generates once
-                model_cost = (input_cost + output_cost)
-            elif phase == "criticize":
-                # Each member critiques once
-                model_cost = (input_cost + output_cost)
-            else:  # converge
-                # Only one model synthesizes
-                model_cost = (input_cost + output_cost) if model_key == model_keys[0] else 0
-
-            total_cost += model_cost
-
-        # For criticize phase, multiply by number of members
         if phase == "criticize":
-            total_cost *= num_members
+            # Critics are a fixed roster independent of generator selection.
+            # Use critic_models from config; fall back to passed model_keys if absent.
+            criticize_cfg = self.models_config.get("phase_settings", {}).get("criticize", {})
+            critic_keys = criticize_cfg.get("critic_models", model_keys)
+            novelty_critic_key = criticize_cfg.get("novelty_critic", "")
+            novelty_max_tokens = criticize_cfg.get("novelty_max_tokens", max_tokens)
+
+            for ck in critic_keys:
+                cfg = self.get_model_config(ck)
+                if not cfg:
+                    continue
+                pricing = cfg.get("pricing", {})
+                ic = (input_tokens_estimate / 1_000_000) * pricing.get("input_per_1m", 0)
+                oc = (max_tokens / 1_000_000) * pricing.get("output_per_1m", 0)
+                total_cost += ic + oc
+                # Novelty critic makes a second dedicated pass with more output tokens
+                if ck == novelty_critic_key:
+                    total_cost += ic  # input roughly similar
+                    total_cost += (novelty_max_tokens / 1_000_000) * pricing.get("output_per_1m", 0)
+        elif phase == "diverge":
+            for model_key in model_keys:
+                model_config = self.get_model_config(model_key)
+                if not model_config:
+                    continue
+                pricing = model_config.get("pricing", {})
+                input_cost = (input_tokens_estimate / 1_000_000) * pricing.get("input_per_1m", 0)
+                output_cost = (max_tokens / 1_000_000) * pricing.get("output_per_1m", 0)
+                total_cost += input_cost + output_cost
+        else:  # converge — always the coordinator (Claude Sonnet), regardless of selected generators
+            coordinator_cfg = self.get_model_config("claude_sonnet_latest")
+            if coordinator_cfg:
+                pricing = coordinator_cfg.get("pricing", {})
+                total_cost += (input_tokens_estimate / 1_000_000) * pricing.get("input_per_1m", 0)
+                total_cost += (max_tokens / 1_000_000) * pricing.get("output_per_1m", 0)
 
         return total_cost
 

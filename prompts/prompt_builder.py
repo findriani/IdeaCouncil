@@ -4,7 +4,12 @@ Dynamic prompt construction with user context injection.
 
 from typing import Dict, Any, List, Optional
 from prompts.diverge_prompts import DIVERGE_SYSTEM_PROMPT, build_diverge_prompt
-from prompts.criticize_prompts import CRITICIZE_SYSTEM_PROMPT, build_criticize_prompt
+from prompts.criticize_prompts import (
+    CRITICIZE_SYSTEM_PROMPT,
+    NOVELTY_SYSTEM_PROMPT,
+    build_criticize_prompt,
+    build_novelty_critique_prompt,
+)
 from prompts.converge_prompts import CONVERGE_SYSTEM_PROMPT, build_converge_prompt
 from utils.context_manager import ContextManager
 
@@ -74,14 +79,40 @@ class PromptBuilder:
             {"role": "user", "content": prompt}
         ]
 
+    def build_novelty_critique_messages(
+        self,
+        all_ideas: List[Dict[str, Any]],
+        literature_check_report: str = "",
+        is_reasoning_model: bool = False,
+    ) -> List[Dict[str, str]]:
+        """
+        Novelty-only critique pass for the dedicated novelty critic (Kimi K2.6).
+
+        Uses the full 7000-char literature context + the live literature check
+        report. All ideas are included (no own-idea exclusion for this pass).
+        """
+        ctx = self.context_manager.for_novelty_critique()
+        prompt = build_novelty_critique_prompt(
+            ideas_to_review=all_ideas,
+            literature_context=ctx["literature"],
+            literature_check_report=literature_check_report,
+            is_reasoning_model=is_reasoning_model,
+        )
+        return [
+            {"role": "system", "content": NOVELTY_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+
     def build_converge_messages(
         self,
         all_ideas: List[Dict[str, Any]],
         all_critiques: Dict[str, List[Dict[str, Any]]],
-        top_n: int = 5
+        top_n: int = 5,
+        novelty_assessments: Optional[Dict[str, int]] = None,
     ) -> List[Dict[str, str]]:
         """
         Converge phase: minimal dataset context only (no literature needed).
+        novelty_assessments maps idea_id → novelty_score from the Kimi novelty pass.
         """
         ctx = self.context_manager.for_converge()
         prompt = build_converge_prompt(
@@ -89,7 +120,8 @@ class PromptBuilder:
             all_critiques=all_critiques,
             user_profile=self.user_profile,
             top_n=top_n,
-            additional_context=ctx["dataset"]
+            additional_context=ctx["dataset"],
+            novelty_assessments=novelty_assessments or {},
         )
         return [
             {"role": "system", "content": CONVERGE_SYSTEM_PROMPT},

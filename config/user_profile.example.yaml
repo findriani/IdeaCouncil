@@ -11,8 +11,8 @@ research_interests:
 
   specific_topics:
     - Lightweight model architectures for edge deployment
-    - Feature engineering and feature extraction
-    - applied machine learning
+    - Novel training strategies and self-supervised learning
+    - Applied machine learning
 
   avoid_topics:
     - Pure NLP or large language model training (out of scope)
@@ -58,6 +58,26 @@ resources:
   budget:
     api_costs: "Minimal - $0 to $20/month total for all LLM API usage"
     other: "Student budget, no research grant or institutional funding. Cannot purchase proprietary datasets or paid tools."
+
+
+contribution_types:
+  # Controls the orthogonality constraint in the diverge (idea generation) phase.
+  # Each council member must assign a DIFFERENT type to each idea it generates,
+  # ensuring structural diversity across the idea pool.
+  #
+  # The defaults below are weighted toward methodological novelty (Middle),
+  # which produces more convincingly publishable ideas in applied ML/DL.
+  # Input/output reformulations may support ideas but should not be the sole novelty.
+  #
+  # Remove or comment out types that don't apply to your field.
+  # Add domain-specific types as needed (e.g. "Fairness / Bias Study", "Cross-lingual Transfer").
+  # The list must have at least as many entries as `ideas_per_member` in config.yaml.
+  - "Novel Pipeline Component"   # New mechanism for a specific pipeline step with no standard solution
+  - "Inductive Bias / Architecture" # Model structure whose assumptions directly address a known limitation
+  - "Training Paradigm"          # New learning strategy (contrastive, self-supervised, curriculum, multi-task)
+  - "Lightweight Baseline"       # Simple, interpretable method strong enough to challenge heavier models
+  - "Evaluation / Analysis Paper" # New benchmark, metric, or robustness study that changes what the field optimises for
+  - "New Problem Formulation"    # Reframe existing data into a new task where the methodological challenge is itself novel
 
 
 preferences:

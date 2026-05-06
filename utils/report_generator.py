@@ -39,10 +39,14 @@ class ReportGenerator:
         text = _re.sub(r'\n```\s*$', '', text)
         text = text.strip()
 
-        # 2. Join hard-wrapped paragraph lines.
+        # 2. Strip ASCII art separator lines (═══, ───, ━━━) that models sometimes generate.
+        #    Replace them with a standard markdown --- divider.
+        text = _re.sub(r'^[═━─]{4,}\s*$', '---', text, flags=_re.MULTILINE)
+
+        # 3. Join hard-wrapped paragraph lines.
         #    A line is "structural" if it starts with a markdown marker or is blank.
         STRUCTURAL = _re.compile(
-            r'^\s*($|#+\s|[-*+]\s|\d+\.\s|>{1}|={3,}|━{3,}|─{3,}|═{3,}|-{3,}|\*{3,})'
+            r'^\s*($|#+\s|[-*+]\s|\d+\.\s|>{1}|-{3,}|\*{3,})'
         )
 
         lines = text.splitlines()
@@ -101,22 +105,14 @@ class ReportGenerator:
         report_lines.append(f"> {user_prompt}")
         report_lines.append("")
 
-        # Executive Summary (from final iteration)
+        # Results — show synthesis once, cleanly
         if iterations_data:
             final_iteration = iterations_data[-1]
             if "converge" in final_iteration:
-                report_lines.append("## Executive Summary")
+                report_lines.append("## Results")
                 report_lines.append("")
                 report_lines.append(self._clean_synthesis(final_iteration["converge"].get("synthesis", "")))
                 report_lines.append("")
-
-        # Top Recommendations
-        report_lines.append("## Top Recommendations")
-        report_lines.append("")
-
-        if iterations_data and "converge" in iterations_data[-1]:
-            top_ideas = iterations_data[-1]["converge"].get("top_ideas", [])
-            report_lines.extend(self._format_top_ideas(top_ideas))
 
         # Iteration History
         report_lines.append("## Iteration History")
@@ -151,11 +147,11 @@ class ReportGenerator:
                 report_lines.append("*Critical evaluations were performed by all council members.*")
                 report_lines.append("")
 
-            # Converge phase
+            # Converge phase — synthesis shown in Results section above
             if "converge" in iteration:
-                report_lines.append("#### Converge Phase - Synthesis")
+                report_lines.append("#### Converge Phase")
                 report_lines.append("")
-                report_lines.append(self._clean_synthesis(iteration["converge"].get("synthesis", "")))
+                report_lines.append("*Synthesis complete — see Results section above.*")
                 report_lines.append("")
 
         # Cost Breakdown
@@ -255,51 +251,10 @@ class ReportGenerator:
         final = iterations_data[-1]
         converge = final.get("converge", {})
 
-        # Clean the raw synthesis once and reuse
+        # Render the synthesis directly — it is already well-formatted markdown
         synthesis = self._clean_synthesis(converge.get("synthesis", ""))
-
-        # Executive summary — extract up to the first separator or section header
-        if "EXECUTIVE SUMMARY:" in synthesis.upper():
-            idx = synthesis.upper().find("EXECUTIVE SUMMARY:") + len("EXECUTIVE SUMMARY:")
-            # Stop at next major section (━━, COMMON THEMES, TOP RECOMMENDATIONS, or double blank)
-            stop = _re.search(r'\n(━{3,}|═{3,}|COMMON THEMES:|TOP RECOMMENDATIONS:|\n\n)', synthesis[idx:], _re.IGNORECASE)
-            excerpt = synthesis[idx: idx + stop.start()].strip() if stop else synthesis[idx:].strip()
-            if excerpt:
-                lines.append("## Executive Summary")
-                lines.append("")
-                lines.append(excerpt)
-                lines.append("")
-
-        # Common themes — re-parse from clean synthesis to capture multi-line bullets
-        themes_match = _re.search(
-            r'COMMON THEMES:\s*\n(.*?)(?=\n(?:TOP RECOMMENDATIONS:|━{3,}|═{3,}|#{1,3}\s)|\Z)',
-            synthesis, _re.IGNORECASE | _re.DOTALL
-        )
-        if themes_match:
-            theme_lines = themes_match.group(1).strip().splitlines()
-            # Merge continuation lines (indented) into the preceding bullet
-            merged_themes = []
-            for tl in theme_lines:
-                stripped = tl.strip()
-                if not stripped:
-                    continue
-                if stripped.startswith('-') or stripped.startswith('*'):
-                    merged_themes.append(stripped.lstrip('-* '))
-                elif merged_themes:
-                    merged_themes[-1] += ' ' + stripped
-            if merged_themes:
-                lines.append("## Common Themes")
-                lines.append("")
-                for theme in merged_themes:
-                    lines.append(f"- {theme}")
-                lines.append("")
-
-        # Top ideas
-        top_ideas = converge.get("top_ideas", [])
-        if top_ideas:
-            lines.append("## Top Recommendations")
-            lines.append("")
-            lines.extend(self._format_top_ideas(top_ideas))
+        if synthesis:
+            lines.append(synthesis)
 
         lines.append("---")
         lines.append("")

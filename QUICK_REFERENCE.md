@@ -1,160 +1,171 @@
-# LLM Council - Quick Reference Card
+# IdeaCouncil — Quick Reference
 
-## 🚀 Start the App
+## Start the App
 
 ```bash
 streamlit run app.py
 ```
 
-## 📁 Key Files
+---
+
+## Key Files
 
 | File | Purpose |
 |------|---------|
-| `app.py` | Main application - run this |
-| `.env` | Your API key (create from `.env.example`) |
-| `config/user_profile.yaml` | Your research profile |
-| `config/models.yaml` | Model configurations |
+| `app.py` | Main Streamlit application |
+| `.env` | Your OpenRouter API key |
+| `config/user_profile.yaml` | Your research profile (copy from `user_profile.example.yaml`) |
+| `config/models.yaml` | Model registry, pricing, phase settings, critic roster |
 | `README.md` | Full documentation |
-| `FINAL_SUMMARY.md` | Complete overview |
+| `QUICKSTART.md` | 5-minute setup guide |
 
-## 🎯 Workflow
+---
 
-1. **Input** → Enter research prompt
-2. **Diverge** → Models generate ideas (parallel)
-3. **Criticize** → Models evaluate ideas (sequential)
-4. **Converge** → Synthesis of top recommendations
-5. **Iterate** → Provide feedback, run again (optional)
+## Workflow
 
-## 💰 Cost Estimates
+```
+Research prompt + optional context
+        ↓
+DIVERGE          — all selected models generate 4 ideas each (parallel, temp 0.9)
+        ↓  near-duplicates removed
+LITERATURE CHECK — 4-6 queries generated from ideas → SemanticScholar + OpenAlex
+                   → ~700-word report (last 5 years, ~$0.01, graceful fallback)
+        ↓
+CRITICIZE        — split into two parallel tracks (temp 0.5)
+  Track A: 4 general critics → Feasibility + Impact only
+  Track B: Kimi K2.6 (novelty pass) → Novelty only, full lit context + live report
+        ↓
+CONVERGE         — Claude Sonnet synthesizes top 6, weights novelty most heavily (temp 0.3)
+        ↓
+Full report + optional next iteration (up to 3 total)
+```
 
-| Preset | Models | Cost/Iteration | Cost/Session (3 iterations) |
-|--------|--------|----------------|----------------------------|
-| Budget | 3 | $0.10-$0.15 | $0.30-$0.45 |
-| Default | 5 | $0.30-$0.40 | $1.00-$1.20 |
-| Premium | 7 | $0.80-$1.20 | $2.50-$3.50 |
+---
 
-## 🔧 Configuration
+## Designated Critics
 
-### Default Models (5)
-- Claude 3.5 Sonnet
-- Gemini 2.0 Flash (Free)
-- ChatGPT 4o
-- Kimi (Moonshot)
-- GLM-4 Plus
+Regardless of which generator models you select, these 4 always critique:
 
-### Budget Models (3)
-- Gemini (Free)
-- GPT-4o Mini
-- Claude Haiku
+- **Claude Sonnet** (also the converge coordinator) — Feasibility + Impact
+- **GPT-5.4** — Feasibility + Impact
+- **Kimi K2.6** — Feasibility + Impact (general pass) **+ Novelty only** (dedicated pass)
+- **DeepSeek V4 Pro** — Feasibility + Impact
 
-### Premium Models (7)
-- All default + Claude Opus + GPT-4 Turbo
+Kimi makes two calls per run: one as a general critic (excluding own ideas), and one as the dedicated Novelty critic (all ideas, full literature context + live search report).
 
-## 📊 Output
+To change the roster, edit `critic_models` in `config/models.yaml` → `phase_settings.criticize`.
+To change the novelty critic, edit `novelty_critic` in the same section.
 
-- **Ideas**: 3 per model × number of models
-- **Critiques**: Each model reviews all others' ideas
-- **Top Recommendations**: Top 5 ranked ideas
-- **Report**: Comprehensive markdown file
-- **Cost**: Detailed breakdown by phase and model
+---
 
-## 🛠️ Common Commands
+## Critique Scores
+
+Scoring is split across two tracks:
+
+| Score | Scored by | What it measures |
+|-------|-----------|-----------------|
+| **Novelty** | Kimi K2.6 (dedicated pass) — full lit context + live search report | Is this idea original vs. existing and recent work? |
+| **Feasibility** | 4 general critics | How well-scoped and executable is this as a complete, bounded paper? |
+| **Impact** | 4 general critics | If it works, how significant is the advance? |
+
+Converge ranks ideas with **Novelty weighted most heavily**, then Impact, then Feasibility.
+
+---
+
+## Idea Fields
+
+Each generated idea contains:
+
+`Contribution Type` · `Title` · `Summary` · `Gap` · `Novel Component` · `Pipeline` · `Feasibility` · `Expected Outcomes`
+
+The **Gap → Novel Component → Pipeline** structure separates the problem from the solution — useful for evaluating how publishable the core novelty is.
+
+---
+
+## Contribution Types (default)
+
+| Type | Core novelty lives in... |
+|------|--------------------------|
+| Novel Pipeline Component | A new mechanism for a specific processing step |
+| Inductive Bias / Architecture | Model structure assumptions |
+| Training Paradigm | How the model learns (contrastive, self-supervised, etc.) |
+| Lightweight Baseline | Simplicity that reveals something about the problem |
+| Evaluation / Analysis Paper | A new benchmark, metric, or robustness study |
+| New Problem Formulation | A new task structure where the challenge itself is novel |
+
+Each council member must use a **different type per idea** — enforcing structural diversity across the idea pool.
+
+---
+
+## Cost Estimates
+
+| Configuration | Est. cost/iteration |
+|--------------|-------------------|
+| Default (7 generators, 4 critics + Kimi novelty pass) | $0.55–$0.90 |
+| Fewer generators (3–4 models) | $0.35–$0.60 |
+| Literature Check (all configs) | +~$0.01 |
+
+Critics are the main cost driver (~55–65% of total). Kimi now makes 2 calls per run (general + novelty pass). The literature check adds ~$0.01 via two Gemini Flash Lite calls — SemanticScholar and OpenAlex are free. Reduce overall cost by selecting fewer generator models.
+
+---
+
+## Common Commands
 
 ```bash
-# Install dependencies
+# Install
 pip install -r requirements.txt
 
-# Verify installation
+# Verify
 python verify_installation.py
 
-# Run application
+# Run
 streamlit run app.py
 
-# Run tests
-pytest tests/test_basic.py -v
-
-# Test enhancements
-python -c "from core.anonymizer import IdeaAnonymizer; print('OK')"
-python -c "from core.ranker import RankingAggregator; print('OK')"
+# Tests
+pytest tests/ -v
 ```
 
-## 🐛 Troubleshooting
+---
 
-| Issue | Solution |
-|-------|----------|
-| "API key cannot be empty" | Add key to `.env` file |
-| "Insufficient credits" | Add credits at openrouter.ai/credits |
-| "Module not found" | Run `pip install -r requirements.txt` |
-| App won't start | Try `python -m streamlit run app.py` |
+## Troubleshooting
 
-## 📖 Documentation
+| Issue | Fix |
+|-------|-----|
+| `API key cannot be empty` | Add key to `.env` or enter in sidebar |
+| `Insufficient credits` | Add credits at openrouter.ai/credits |
+| `Module not found` | `pip install -r requirements.txt` |
+| App won't start | Try `python -m streamlit run app.py` (Python 3.8+ required) |
+| Stuck at Criticize phase | A model is timing out — others will still complete; check terminal log |
+| Prompt cleared after profile edit | Fixed in current version — profile editor now preserves main page inputs |
 
-- `QUICKSTART.md` - 5-minute setup
-- `README.md` - Full guide
-- `FINAL_SUMMARY.md` - Complete overview
-- `KARPATHY_DETAILED_COMPARISON.md` - Enhancements
-- `INTEGRATION_GUIDE.md` - How to integrate enhancements
+---
 
-## ✨ New Features (Optional)
+## Example Prompts
 
-**Already Created, Ready to Integrate:**
-- `core/anonymizer.py` - Blind peer review
-- `core/ranker.py` - Borda count voting
-
-**Integration Time:**
-- Anonymization: 2-3 hours
-- Ranking: 2-3 hours
-- Both: 6-8 hours
-
-**See:** `INTEGRATION_GUIDE.md`
-
-## 🎓 Example Prompts
-
-**Vague:**
+**Specific (recommended):**
 ```
-Give me ML research ideas for my thesis
+ML research ideas for multimodal spoilage detection using RGB, thermal IR,
+and gas sensor data. Undergraduate thesis, 6 months, Google Colab T4 available,
+targeting Q2/Q3 Scopus journal.
 ```
 
-**Specific:**
+**Broad:**
 ```
-I need ML research ideas for time series analysis, suitable for
-undergraduate thesis, no deep learning (limited compute), must
-complete in 6 months, using public datasets.
-```
-
-**With Constraints:**
-```
-Research ideas for educational technology using NLP. I have:
-- 3 months timeline
-- No funding
-- Undergraduate level expertise
-- Access to Google Colab
+Novel NLP ideas for low-resource Indonesian language processing, master's level,
+no GPU, 4 months.
 ```
 
-## 📈 Usage Tips
+---
 
-1. **Be Specific** - More details = better recommendations
-2. **Use Default Preset** - Good balance of quality/cost
-3. **Iterate** - Provide feedback to refine results
-4. **Edit Profile** - Customize `config/user_profile.yaml`
-5. **Monitor Costs** - Check breakdown after each iteration
-6. **Download Reports** - Save markdown files for reference
-
-## 🔑 Environment Variables
+## Environment Variables
 
 ```bash
-# .env file
+# .env
 OPENROUTER_API_KEY=sk-or-v1-your-key-here
 ```
 
 Get your key: https://openrouter.ai/keys
 
-## 📞 Support
-
-- **Documentation**: See files above
-- **Issues**: Check troubleshooting section
-- **OpenRouter**: https://openrouter.ai/docs
-
 ---
 
-**Ready? Run:** `streamlit run app.py` 🚀
+**Run:** `streamlit run app.py`

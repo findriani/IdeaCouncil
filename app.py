@@ -19,6 +19,8 @@ from utils.validator import Validator, ValidationError
 from utils.report_generator import ReportGenerator
 from utils.context_manager import ContextManager
 from utils.session_snapshot import SessionSnapshotStore
+from utils.external_prompt import build_external_prompt
+from core.member import parse_ideas_from_text
 
 # Import UI components
 from ui.sidebar import render_sidebar, render_profile_editor
@@ -161,6 +163,12 @@ def initialize_session_state():
     if "context_manager" not in st.session_state:
         st.session_state.context_manager = ContextManager()
 
+    if "manual_ideas_parsed" not in st.session_state:
+        st.session_state.manual_ideas_parsed = []
+
+    if "manual_ideas_raw" not in st.session_state:
+        st.session_state.manual_ideas_raw = ""
+
     if "session_id" not in st.session_state:
         st.session_state.session_id = _session_query_param() or snapshot_store.new_session_id()
 
@@ -187,7 +195,8 @@ async def run_iteration_async(
     council: Council,
     user_prompt: str,
     user_feedback: str,
-    progress_display: ProgressDisplay
+    progress_display: ProgressDisplay,
+    manual_ideas: Optional[list] = None,
 ):
     """
     Run one iteration asynchronously.
@@ -197,6 +206,7 @@ async def run_iteration_async(
         user_prompt: User research prompt
         user_feedback: User feedback for refinement
         progress_display: Progress display instance
+        manual_ideas: Optional pre-parsed ideas from external Claude session
 
     Returns:
         Iteration results
@@ -207,7 +217,8 @@ async def run_iteration_async(
     results = await council.run_iteration(
         user_prompt=user_prompt,
         user_feedback=user_feedback,
-        progress_callback=progress_callback
+        progress_callback=progress_callback,
+        manual_ideas=manual_ideas,
     )
 
     return results
@@ -217,7 +228,8 @@ def run_iteration(
     council: Council,
     user_prompt: str,
     user_feedback: str = "",
-    verbosity: str = "Progress"
+    verbosity: str = "Progress",
+    manual_ideas: Optional[list] = None,
 ):
     """
     Run one iteration (sync wrapper for async function).
@@ -227,6 +239,7 @@ def run_iteration(
         user_prompt: User research prompt
         user_feedback: User feedback for refinement
         verbosity: Progress verbosity level
+        manual_ideas: Optional pre-parsed ideas from external Claude session
     """
     progress_display = ProgressDisplay(verbosity=verbosity)
     progress_display.start()
@@ -238,7 +251,8 @@ def run_iteration(
                 council=council,
                 user_prompt=user_prompt,
                 user_feedback=user_feedback,
-                progress_display=progress_display
+                progress_display=progress_display,
+                manual_ideas=manual_ideas,
             )
         )
 
@@ -477,9 +491,20 @@ def main():
     st.session_state.selected_models = selected_models
 
     # Profile editor (if requested)
+    _PRESERVED_KEYS = ("user_prompt_input", "dataset_typed", "literature_typed")
     if st.session_state.show_profile_editor:
+        # Snapshot widget values before the early return — Streamlit clears unrendered widget keys
+        for _k in _PRESERVED_KEYS:
+            if _k in st.session_state:
+                st.session_state[f"_preserved_{_k}"] = st.session_state[_k]
         render_profile_editor()
         return
+
+    # Restore widget values if returning from the profile editor
+    for _k in _PRESERVED_KEYS:
+        _saved = st.session_state.pop(f"_preserved_{_k}", None)
+        if _saved is not None:
+            st.session_state[_k] = _saved
 
     # Check if configuration is valid
     config_valid = config["api_key_valid"] and config["models_valid"]
@@ -516,7 +541,7 @@ def main():
 
     with col2:
         st.subheader("Quick Stats")
-        coordinator_cfg = settings.get_model_config("claude_sonnet")
+        coordinator_cfg = settings.get_model_config("claude_sonnet_latest")
         coordinator_name = coordinator_cfg.get("display_name", "Claude Sonnet") if coordinator_cfg else "Claude Sonnet"
         st.metric("Coordinator", coordinator_name)
         st.metric("Council Members", len(selected_models))
@@ -651,6 +676,90 @@ def main():
                     f"Criticize: ~{tok['criticize']} | Converge: ~{tok['converge']}"
                 )
 
+    # ── Manual external LLM ideas ──────────────────────────────────────────────
+    with st.expander(
+        "🤖 Add External LLM Ideas (optional)",
+        expanded=bool(st.session_state.manual_ideas_parsed)
+    ):
+        st.caption(
+            "Generate ideas in any external LLM, then paste or upload the output here. "
+            "Those ideas are injected as an extra council member before the criticize "
+            "and converge phases — at no API cost."
+        )
+
+        # Editable prompt text box
+        st.markdown("**Step 1 — Copy this prompt into your LLM** (edit if needed, then copy):")
+        ext_prompt_text = build_external_prompt(
+            user_profile=settings.get_user_profile(),
+            ideas_per_member=config["ideas_per_member"],
+            research_request=user_prompt or "",
+        )
+        st.text_area(
+            "External prompt",
+            value=ext_prompt_text,
+            height=300,
+            key="external_prompt_display",
+            label_visibility="collapsed",
+            help="Edit if needed, then select-all and copy into your LLM of choice. "
+                 "Also paste your dataset description and literature context there.",
+        )
+        st.caption(
+            "Tip: paste your dataset and literature context into the same LLM conversation "
+            "so it can tailor the ideas to your actual data."
+        )
+
+        st.markdown("---")
+        st.markdown("**Step 2 — Paste or upload the LLM output below:**")
+
+        tab_paste, tab_file = st.tabs(["✏️ Paste / Type", "📁 Upload File (.txt / .md)"])
+
+        with tab_paste:
+            pasted = st.text_area(
+                "LLM output",
+                value=st.session_state.manual_ideas_raw,
+                height=200,
+                placeholder="IDEA 1:\nTitle: ...\nSummary: ...\n\nIDEA 2:\n...",
+                key="manual_ideas_paste",
+                label_visibility="collapsed",
+            )
+
+        with tab_file:
+            uploaded_manual = st.file_uploader(
+                "Upload .txt or .md", type=["txt", "md"], key="manual_ideas_upload"
+            )
+            file_raw = ""
+            if uploaded_manual:
+                file_raw = uploaded_manual.read().decode("utf-8", errors="replace")
+                st.success(f"Loaded: {uploaded_manual.name} ({len(file_raw):,} chars)")
+
+        raw_text = (file_raw or pasted).strip()
+
+        col_parse, col_clear = st.columns([2, 1])
+        with col_parse:
+            if st.button("🔍 Parse Ideas", use_container_width=True, disabled=not raw_text):
+                parsed = parse_ideas_from_text(raw_text)
+                if parsed:
+                    st.session_state.manual_ideas_parsed = parsed
+                    st.session_state.manual_ideas_raw = raw_text
+                    st.success(f"Parsed {len(parsed)} idea(s) successfully.")
+                    st.rerun()
+                else:
+                    st.error(
+                        "Could not parse any ideas. Make sure the output follows the "
+                        "IDEA 1: / Title: / Summary: format shown in the prompt above."
+                    )
+        with col_clear:
+            if st.button("✕ Clear", use_container_width=True,
+                         disabled=not st.session_state.manual_ideas_parsed):
+                st.session_state.manual_ideas_parsed = []
+                st.session_state.manual_ideas_raw = ""
+                st.rerun()
+
+        if st.session_state.manual_ideas_parsed:
+            st.markdown(f"**{len(st.session_state.manual_ideas_parsed)} idea(s) ready to inject:**")
+            for i, idea in enumerate(st.session_state.manual_ideas_parsed, 1):
+                st.write(f"{i}. **{idea.get('title', 'Untitled')}** — {idea.get('summary', '')[:120]}...")
+
     # Action buttons
     col_btn1, col_btn2, col_btn3 = st.columns([2, 2, 2])
 
@@ -709,7 +818,8 @@ def main():
                 council=council,
                 user_prompt=user_prompt,
                 user_feedback="",
-                verbosity=config["verbosity"]
+                verbosity=config["verbosity"],
+                manual_ideas=st.session_state.manual_ideas_parsed or None,
             )
 
             if success:
@@ -735,6 +845,8 @@ def main():
         st.session_state.user_prompt_input = ""
         st.session_state.dataset_typed = ""
         st.session_state.literature_typed = ""
+        st.session_state.manual_ideas_parsed = []
+        st.session_state.manual_ideas_raw = ""
         st.session_state.session_id = snapshot_store.new_session_id()
         st.session_state.snapshot_restored = False
         st.session_state.snapshot_restore_checked = True
@@ -766,7 +878,8 @@ def main():
                     council=st.session_state.council,
                     user_prompt=user_prompt,
                     user_feedback=user_feedback,
-                    verbosity=config["verbosity"]
+                    verbosity=config["verbosity"],
+                    manual_ideas=st.session_state.manual_ideas_parsed or None,
                 )
 
                 if success:

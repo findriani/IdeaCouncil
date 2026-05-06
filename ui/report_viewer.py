@@ -21,7 +21,7 @@ def display_report(
         cost_summary: Cost breakdown
         iterations_data: All iteration data
     """
-    tabs = st.tabs(["🏆 Top Recommendations", "💡 All Ideas", "💬 Critiques", "💰 Cost Breakdown"])
+    tabs = st.tabs(["🏆 Top Recommendations", "💡 All Ideas", "💬 Critiques", "🔬 Literature Check", "💰 Cost Breakdown"])
 
     # Top Recommendations Tab
     with tabs[0]:
@@ -56,6 +56,7 @@ def display_report(
             st.write(f"### Iteration {i}")
 
             diverge_data = iteration.get("diverge", {})
+            dedup_report = iteration.get("dedup_report", [])
 
             for member_id, data in diverge_data.items():
                 with st.expander(f"**{member_id}** ({data.get('model', 'Unknown')})", expanded=False):
@@ -63,15 +64,24 @@ def display_report(
 
                     if ideas:
                         for j, idea in enumerate(ideas, 1):
-                            st.write(f"**Idea {j}: {idea.get('title', 'Untitled')}**")
+                            ct = idea.get('contribution_type', '')
+                            title_line = f"**Idea {j}: {idea.get('title', 'Untitled')}**"
+                            if ct:
+                                title_line += f"  `{ct}`"
+                            st.write(title_line)
                             if idea.get('summary'):
                                 st.write(f"*Summary:* {idea.get('summary')}")
-                            if idea.get('methodology'):
+                            if idea.get('gap'):
+                                st.warning(f"**Gap:** {idea.get('gap')}")
+                            if idea.get('novel_component'):
+                                st.success(f"**Novel Component:** {idea.get('novel_component')}")
+                            if idea.get('pipeline'):
+                                st.write(f"*Pipeline:* {idea.get('pipeline')}")
+                            # legacy field fallback
+                            if idea.get('methodology') and not idea.get('pipeline'):
                                 st.write(f"*Methodology:* {idea.get('methodology')}")
                             if idea.get('feasibility'):
                                 st.write(f"*Feasibility:* {idea.get('feasibility')}")
-                            if idea.get('timeline'):
-                                st.write(f"*Timeline:* {idea.get('timeline')}")
                             st.divider()
                     else:
                         # Parsing failed — show raw response as fallback
@@ -81,6 +91,24 @@ def display_report(
                         else:
                             st.write("No ideas available.")
 
+            if dedup_report:
+                with st.expander(
+                    f"Near-Duplicates Filtered Before Review — {len(dedup_report)} idea(s)",
+                    expanded=False
+                ):
+                    st.caption(
+                        "These ideas were removed before the criticize phase because they were "
+                        "too similar to another idea already in the pool (cosine similarity > 0.75). "
+                        "They are shown here for transparency."
+                    )
+                    for entry in dedup_report:
+                        sim_pct = int(entry.get("similarity_score", 0) * 100)
+                        st.write(
+                            f"- **{entry.get('removed_title', 'Untitled')}** → similar to "
+                            f"**{entry.get('duplicate_of_title', 'Untitled')}** "
+                            f"({sim_pct}% similarity)"
+                        )
+
     # Critiques Tab
     with tabs[2]:
         st.subheader("Critical Evaluations")
@@ -88,18 +116,154 @@ def display_report(
         for i, iteration in enumerate(iterations_data, 1):
             st.write(f"### Iteration {i}")
 
+            controversy = iteration.get("controversy", {})
             criticize_data = iteration.get("criticize", {})
 
-            for member_id, data in criticize_data.items():
-                with st.expander(f"**{member_id}** Critiques", expanded=False):
-                    raw_response = data.get("raw_response", "")
-                    if raw_response:
-                        st.markdown(raw_response)
+            # Kimi Novelty Assessment (separate dedicated pass)
+            kimi_novelty = criticize_data.get("kimi_novelty", {})
+            if kimi_novelty:
+                with st.expander("**Kimi K2.6 — Novelty Assessments** (dedicated novelty critic)", expanded=False):
+                    assessments = kimi_novelty.get("assessments", [])
+                    if not assessments:
+                        raw = kimi_novelty.get("raw_response", "")
+                        if raw:
+                            st.markdown(raw)
+                        else:
+                            st.write("No novelty assessments available.")
                     else:
-                        st.write("No critiques available")
+                        for assessment in assessments:
+                            st.markdown(f"**Idea {assessment.get('idea_index', 0) + 1}**")
+                            col_n, col_blank = st.columns([1, 2])
+                            with col_n:
+                                st.metric("Novelty Score", assessment.get("novelty_score", "—"))
+                            if assessment.get("closest_prior_work"):
+                                st.write(f"**Closest Prior Work:** {assessment['closest_prior_work']}")
+                            if assessment.get("novelty_justification"):
+                                st.write(f"**Justification:** {assessment['novelty_justification']}")
+                            st.divider()
+
+            # General critics (Feasibility + Impact)
+            for member_id, data in criticize_data.items():
+                if member_id == "kimi_novelty":
+                    continue  # already displayed above
+
+                with st.expander(f"**{member_id}** Critiques", expanded=False):
+                    critiques = data.get("critiques", [])
+
+                    if not critiques:
+                        raw_response = data.get("raw_response", "")
+                        if raw_response:
+                            st.markdown(raw_response)
+                        else:
+                            st.write("No critiques available")
+                        continue
+
+                    for critique in critiques:
+                        idea_id = critique.get("idea_id", "")
+                        idea_controversy = controversy.get(idea_id, {})
+                        is_controversial = idea_controversy.get("is_controversial", False)
+
+                        # Header with optional controversy badge
+                        header = f"**Idea {critique.get('idea_index', 0) + 1}**"
+                        if is_controversial:
+                            header += "   🔥 Controversial"
+                        st.markdown(header)
+
+                        if is_controversial:
+                            n_rev = idea_controversy.get("num_reviews", 0)
+                            st.caption(
+                                f"High score variance across {n_rev} reviewer(s) — "
+                                f"Feasibility: {idea_controversy.get('mean_feasibility', 0):.1f}"
+                                f"±{idea_controversy.get('std_feasibility', 0):.1f}  |  "
+                                f"Impact: {idea_controversy.get('mean_impact', 0):.1f}"
+                                f"±{idea_controversy.get('std_impact', 0):.1f}"
+                            )
+
+                        if critique.get("steelman"):
+                            st.info(f"**Steelman:** {critique['steelman']}")
+
+                        if critique.get("overall_assessment"):
+                            st.write(f"**Assessment:** {critique['overall_assessment']}")
+
+                        col_f, col_i = st.columns(2)
+                        with col_f:
+                            st.metric("Feasibility", critique.get("feasibility_score", "—"))
+                        with col_i:
+                            st.metric("Impact", critique.get("impact_score", "—"))
+
+                        if critique.get("strengths"):
+                            st.write(f"**Strengths:**\n{critique['strengths']}")
+                        if critique.get("weaknesses"):
+                            st.write(f"**Weaknesses:**\n{critique['weaknesses']}")
+                        if critique.get("recommendation"):
+                            st.write(f"**Recommendation:** {critique['recommendation']}")
+                        if critique.get("suggestions"):
+                            st.write(f"**Suggestions:** {critique['suggestions']}")
+
+                        st.divider()
+
+    # Literature Check Tab
+    with tabs[3]:
+        st.subheader("Literature Check")
+        st.caption(
+            "Targeted academic search run between the Diverge and Criticize phases. "
+            "Results were used by the dedicated Novelty critic (Kimi K2.6) alongside "
+            "your uploaded literature context."
+        )
+
+        for i, iteration in enumerate(iterations_data, 1):
+            if len(iterations_data) > 1:
+                st.write(f"### Iteration {i}")
+
+            lit_check = iteration.get("literature_check", {})
+
+            if not lit_check:
+                st.info("No literature check data for this iteration.")
+                continue
+
+            if lit_check.get("skipped"):
+                st.warning(
+                    f"Literature check was skipped — {lit_check.get('error', 'APIs unreachable')}. "
+                    "Novelty scoring used only the uploaded literature context."
+                )
+                continue
+
+            # Search queries
+            queries = lit_check.get("queries", [])
+            if queries:
+                with st.expander(f"Search Queries ({len(queries)} generated)", expanded=True):
+                    for q in queries:
+                        st.write(f"- {q}")
+
+            # Papers found
+            papers = lit_check.get("papers", [])
+            if papers:
+                with st.expander(f"Papers Found ({len(papers)} unique)", expanded=False):
+                    # Group by query label for display
+                    by_query: dict = {}
+                    for paper in papers:
+                        q_label = paper.get("query_label", "Other")
+                        by_query.setdefault(q_label, []).append(paper)
+
+                    for q_label, q_papers in by_query.items():
+                        st.write(f"**Query:** {q_label}")
+                        for paper in q_papers:
+                            source = paper.get("source", "")
+                            badge = "**[S2]**" if source == "SemanticScholar" else "**[OA]**"
+                            year = paper.get("year", "?")
+                            citations = paper.get("citation_count", 0)
+                            title = paper.get("title", "Unknown")
+                            st.write(f"  {badge} {title} ({year}, {citations:,} citations)")
+                        st.write("")
+
+            # Summarised report
+            report = lit_check.get("report", "")
+            if report:
+                st.write("**Literature Landscape Report**")
+                st.info(report)
 
     # Cost Breakdown Tab
-    with tabs[3]:
+    with tabs[4]:
         st.subheader("Cost Analysis")
 
         col1, col2 = st.columns(2)

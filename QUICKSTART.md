@@ -1,10 +1,10 @@
 # Quick Start Guide
 
-Get your LLM Council up and running in 5 minutes!
+Get IdeaCouncil running in 5 minutes.
+
+---
 
 ## Step 1: Install Dependencies
-
-Open a terminal in the project directory and run:
 
 ```bash
 pip install -r requirements.txt
@@ -12,107 +12,88 @@ pip install -r requirements.txt
 
 ## Step 2: Set Up API Key
 
-1. Get your OpenRouter API key from: https://openrouter.ai/keys
+1. Get your OpenRouter API key at [openrouter.ai/keys](https://openrouter.ai/keys)
+2. Create a `.env` file in the project root:
 
-2. Create a `.env` file:
-   - Copy `.env.example` to `.env`
-   - Or create a new file named `.env`
+```
+OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
+```
 
-3. Add your API key to `.env`:
-   ```
-   OPENROUTER_API_KEY=sk-or-v1-your-actual-key-here
-   ```
+## Step 3: Set Up Your Profile
 
-## Step 3: Run the Application
+```bash
+cp config/user_profile.example.yaml config/user_profile.yaml
+```
+
+Edit `user_profile.yaml` with your research field, compute constraints, and goals — or use the sidebar editor in the app.
+
+## Step 4: Run
 
 ```bash
 streamlit run app.py
 ```
 
-The app will open in your browser at `http://localhost:8501`
-
-## Step 4: Start Brainstorming
-
-1. **In the sidebar:**
-   - Enter your API key (if not using .env)
-   - Select "Default (Recommended)" preset (5 models)
-   - Keep default settings
-
-2. **In the main area:**
-   - Enter a research prompt, for example:
-     ```
-     I need ML research ideas for my undergraduate thesis on
-     time series analysis. I have limited compute (no GPU) and
-     6 months to complete the project.
-     ```
-
-3. **Click "Start Brainstorming"**
-   - Wait 30-60 seconds for the council to complete
-   - Review the top recommendations
-   - Download the full report
-
-4. **Optional: Refine Results**
-   - Provide feedback like "Focus more on educational applications"
-   - Click "Run Next Iteration"
-   - Review updated recommendations
-
-## First Time Tips
-
-- **Use the Default preset** - It's balanced and cost-effective (~$0.35/iteration)
-- **Be specific** - More details = better recommendations
-- **Check your profile** - Edit `config/user_profile.yaml` to match your context
-- **Monitor costs** - Check the "Cost Breakdown" tab after each iteration
-
-## Example Session
-
-**Prompt:**
-```
-Give me research ideas for applying machine learning to education,
-suitable for a master's thesis
-```
-
-**Expected Output:**
-- 15 diverse research ideas (3 per model × 5 models)
-- Critical evaluations from all council members
-- Top 5 ranked recommendations with:
-  - Feasibility assessment
-  - Methodology details
-  - Timeline estimates
-  - Next steps
-
-**Cost:** ~$0.30-$0.40 for one iteration
-
-## Troubleshooting
-
-### "API key cannot be empty"
-- Make sure you created the `.env` file
-- Check that your API key is correct
-
-### "Insufficient credits"
-- Add credits to your OpenRouter account
-- Visit: https://openrouter.ai/credits
-
-### "Module not found"
-- Reinstall dependencies: `pip install -r requirements.txt`
-- Make sure you're in the project directory
-
-### App won't start
-- Check Python version: `python --version` (need 3.8+)
-- Try: `python -m streamlit run app.py`
-
-## What's Next?
-
-1. **Customize your profile**: Edit `config/user_profile.yaml`
-2. **Try different presets**: Budget (cheaper) or Premium (better quality)
-3. **Iterate on results**: Provide feedback and refine
-4. **Export reports**: Download markdown files from the app
-
-## Need Help?
-
-- Read the full [README.md](README.md)
-- Check the model configurations in `config/models.yaml`
-- Review example user profile in `config/user_profile.yaml`
+Opens at `http://localhost:8501`.
 
 ---
 
-**Ready to brainstorm?** Run `streamlit run app.py` and let the council help you!
+## Step 5: Start Brainstorming
+
+1. **Sidebar:** Enter your API key (if not using `.env`) and select the Default preset
+2. **Main area:** Enter your research prompt
+3. **Optional:** Expand "Additional Context" to paste a dataset description and related literature — this significantly improves idea quality
+4. **Click "Start Brainstorming"**
+
+**Expected runtime:** 3–10 minutes depending on model selection. Reasoning models (Kimi, GLM) take longer but produce more structured outputs.
+
+---
+
+## What to Expect
+
+With the Default preset (7 generator models, 4 ideas each):
+
+- **28 ideas generated** in diverge (near-duplicates removed automatically)
+- **4 designated critics** (Claude, GPT, Kimi, DeepSeek) each evaluate all ideas with Novelty / Publishability / Impact scores
+- **Top 6 ideas ranked** in converge, each with a full methodology sketch
+
+**Typical cost per iteration:** $0.50–$0.85 with the Default preset.
+
+---
+
+## Tips
+
+- **Be specific in your prompt** — "ML ideas for a 6-month undergrad thesis on multimodal spoilage detection using RGB + IR + gas sensors" beats "ML research ideas"
+- **Fill in the context slots** — dataset description and literature context are the biggest quality multipliers
+- **Use the profile editor** — the sidebar profile editor preserves your main page inputs (prompt, dataset, literature) when you open and close it
+- **Iterate** — after the first run, provide feedback and run a second iteration to refine the direction
+- **Check the Critiques tab** — scroll through individual critic scores to see which ideas were controversial (high score variance) vs. unanimously rated
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `API key cannot be empty` | Check your `.env` file exists and the key is correct |
+| `Insufficient credits` | Add credits at [openrouter.ai/credits](https://openrouter.ai/credits) |
+| `Module not found` | Run `pip install -r requirements.txt` in the project directory |
+| App won't start | Check Python 3.8+: `python --version` — then try `python -m streamlit run app.py` |
+| Stuck at Criticize for 10+ min | A model is timing out — check the terminal log; the others will still complete |
+
+---
+
+## Changing the Critics
+
+The default critic roster is Claude, GPT, Kimi, and DeepSeek. To change it, edit `config/models.yaml`:
+
+```yaml
+phase_settings:
+  criticize:
+    critic_models: ["claude_sonnet_latest", "kimi", "deepseek", "chatgpt"]
+```
+
+Use any model key listed under `available_models`. If a critic model was not selected as a generator, it will be instantiated as a critic-only participant and will review all ideas.
+
+---
+
+**Full documentation:** [README.md](README.md)

@@ -6,6 +6,7 @@ import streamlit as st
 from typing import Dict, Any, List, Tuple
 from config.settings import settings
 from utils.validator import Validator, ValidationError
+from prompts.diverge_prompts import DEFAULT_CONTRIBUTION_TYPES
 
 def render_sidebar() -> Tuple[str, List[str], Dict[str, Any]]:
     """
@@ -21,7 +22,7 @@ def render_sidebar() -> Tuple[str, List[str], Dict[str, Any]]:
     api_key = st.sidebar.text_input(
         "API Key",
         type="password",
-        value="",
+        value=settings.openrouter_api_key,
         help="Get your API key from https://openrouter.ai/keys"
     )
 
@@ -39,7 +40,7 @@ def render_sidebar() -> Tuple[str, List[str], Dict[str, Any]]:
 
     # Coordinator / Converger (always Claude Sonnet)
     st.sidebar.subheader("Coordinator & Converger")
-    coordinator_config = settings.get_model_config("claude_sonnet")
+    coordinator_config = settings.get_model_config("claude_sonnet_latest")
     coordinator_name = coordinator_config.get("display_name", "Claude Sonnet") if coordinator_config else "Claude Sonnet"
     st.sidebar.info(f"🎯 **{coordinator_name}**\nSynthesizes all ideas and ranks top recommendations.")
 
@@ -50,19 +51,17 @@ def render_sidebar() -> Tuple[str, List[str], Dict[str, Any]]:
 
     # Preset selection
     presets = settings.models_config.get("presets", {})
-    preset_options = ["Custom"] + list(presets.keys())
+    preset_options = ["default", "Custom"]
     preset_labels = {
+        "default": f"Default ({len(presets.get('default', {}).get('models', []))} models) — Recommended",
         "Custom": "Custom Selection",
-        "default": f"Default ({len(presets.get('default', {}).get('models', []))} models) - Recommended",
-        "budget": f"Budget ({len(presets.get('budget', {}).get('models', []))} models)",
-        "premium": f"Premium ({len(presets.get('premium', {}).get('models', []))} models)"
     }
 
     selected_preset = st.sidebar.radio(
-        "Quick Presets",
+        "Council Preset",
         preset_options,
         format_func=lambda x: preset_labels.get(x, x),
-        index=1  # Default to "default" preset
+        index=0  # Default to "default" preset
     )
 
     selected_models = []
@@ -84,7 +83,7 @@ def render_sidebar() -> Tuple[str, List[str], Dict[str, Any]]:
             if st.sidebar.checkbox(
                 f"{display_name} ({price_str})",
                 key=f"model_{model_key}",
-                value=model_key in ["claude_sonnet", "chatgpt", "gemini_pro", "kimi", "qwen", "glm"]
+                value=model_key in ["qwen", "kimi", "glm", "deepseek", "grok", "gemini", "chatgpt"]
             ):
                 selected_models.append(model_key)
 
@@ -235,6 +234,32 @@ def render_profile_editor():
         help="Main research goal"
     )
 
+    # Contribution Types
+    st.write("**Contribution Types**")
+    st.caption(
+        "Each council member must assign a different type to each idea, "
+        "enforcing structural diversity across the idea pool. "
+        "Add, remove, or reorder rows as needed. "
+        "Must have at least as many entries as 'Ideas per Member'."
+    )
+
+    default_types = [name for name, _ in DEFAULT_CONTRIBUTION_TYPES]
+    current_types = profile.get("contribution_types", default_types)
+
+    edited_types = st.data_editor(
+        [{"Contribution Type": t} for t in current_types],
+        num_rows="dynamic",
+        use_container_width=True,
+        column_config={
+            "Contribution Type": st.column_config.TextColumn(
+                "Contribution Type",
+                help="Label assigned to each idea to enforce orthogonality",
+                required=True,
+            )
+        },
+        key="contribution_types_editor",
+    )
+
     col1, col2 = st.columns(2)
 
     if col1.button("Save Profile", type="primary"):
@@ -245,6 +270,11 @@ def render_profile_editor():
         updated_profile["constraints"]["timeline"] = [timeline] if timeline else []
         updated_profile["constraints"]["expertise"] = [expertise] if expertise else []
         updated_profile["goals"]["primary"] = primary_goal
+        updated_profile["contribution_types"] = [
+            row["Contribution Type"].strip()
+            for row in edited_types
+            if row.get("Contribution Type", "").strip()
+        ]
 
         settings.update_user_profile(updated_profile)
         st.success("Profile updated!")

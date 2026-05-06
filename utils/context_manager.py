@@ -111,6 +111,12 @@ class ContextManager:
             "literature": self.literature.truncate(1000),
         }
 
+    def for_novelty_critique(self) -> dict:
+        """Full literature context for the dedicated novelty critic (up to 7000 chars)."""
+        return {
+            "literature": self.literature.truncate(7000),
+        }
+
     def for_converge(self) -> dict:
         """Dataset: 100 chars (name/label only). Literature: dropped."""
         return {

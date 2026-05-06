@@ -205,6 +205,70 @@ class RankingAggregator:
 
         return controversial
 
+    def compute_controversy(
+        self,
+        all_critiques_by_member: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Compute per-idea score variance across all reviewers.
+
+        Args:
+            all_critiques_by_member: {member_id: [critique_dict, ...], ...}
+                Each critique_dict should have 'idea_id' and optionally
+                'novelty_score', 'feasibility_score', 'impact_score'.
+
+        Returns:
+            {idea_id: {mean_novelty, std_novelty, mean_feasibility,
+                       std_feasibility, mean_impact, std_impact,
+                       num_reviews, is_controversial}}
+            is_controversial is True when pstdev > 1.0 on any score dimension.
+        """
+        idea_scores: Dict[str, Dict[str, list]] = defaultdict(
+            lambda: {"novelty": [], "feasibility": [], "impact": []}
+        )
+
+        for critiques in all_critiques_by_member.values():
+            for critique in critiques:
+                idea_id = critique.get("idea_id")
+                if not idea_id:
+                    continue
+                for dim in ("novelty", "feasibility", "impact"):
+                    score = critique.get(f"{dim}_score")
+                    if score is not None:
+                        try:
+                            idea_scores[idea_id][dim].append(float(score))
+                        except (TypeError, ValueError):
+                            pass
+
+        result: Dict[str, Dict[str, Any]] = {}
+        for idea_id, scores in idea_scores.items():
+            entry: Dict[str, Any] = {}
+            is_controversial = False
+
+            for dim in ("novelty", "feasibility", "impact"):
+                vals = scores[dim]
+                if vals:
+                    mean_val = statistics.mean(vals)
+                    std_val = statistics.pstdev(vals)
+                else:
+                    mean_val = 0.0
+                    std_val = 0.0
+
+                entry[f"mean_{dim}"] = round(mean_val, 3)
+                entry[f"std_{dim}"] = round(std_val, 3)
+
+                if std_val > 1.0:
+                    is_controversial = True
+
+            entry["num_reviews"] = max(
+                (len(scores[d]) for d in ("novelty", "feasibility", "impact")),
+                default=0
+            )
+            entry["is_controversial"] = is_controversial
+            result[idea_id] = entry
+
+        return result
+
     def get_unanimous_top_choices(
         self,
         all_rankings: Dict[str, List[Dict[str, Any]]],

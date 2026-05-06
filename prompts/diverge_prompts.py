@@ -10,6 +10,15 @@ Your goal is to generate innovative, feasible research ideas that align with the
 
 Be creative and diverse in your suggestions while remaining practical and grounded in reality."""
 
+DEFAULT_CONTRIBUTION_TYPES = [
+    ("Novel Pipeline Component", "Propose a new mechanism for a specific step in the methodology pipeline that has no standard solution — the core novelty must live here"),
+    ("Inductive Bias / Architecture", "Design or adapt a model architecture whose structural assumptions directly address a known limitation of existing approaches"),
+    ("Training Paradigm", "Introduce a new learning strategy — contrastive, self-supervised, curriculum, multi-task — that changes how the model acquires representations, not just what it predicts"),
+    ("Lightweight Baseline", "Design a simple, interpretable method that is strong enough to challenge heavier models; novelty lies in what it reveals about the problem"),
+    ("Evaluation / Analysis Paper", "Identify a gap in how existing methods are measured or compared; propose a benchmark, metric, or robustness study that changes what the field optimises for"),
+    ("New Problem Formulation", "Reframe an existing dataset or domain into a new prediction target or task structure where the methodological challenge is itself novel"),
+]
+
 REASONING_MODEL_SUFFIX = """
 ---
 **FINAL OUTPUT REQUIREMENT (REASONING MODELS):**
@@ -122,38 +131,51 @@ def build_diverge_prompt(
         prompt_parts.append(previous_feedback)
         prompt_parts.append("")
 
+    # Resolve contribution types: user profile overrides defaults
+    raw_types = user_profile.get("contribution_types", [])
+    if raw_types:
+        # User supplied plain strings — use as-is without descriptions
+        contribution_types = [(t, "") for t in raw_types]
+    else:
+        contribution_types = DEFAULT_CONTRIBUTION_TYPES
+
     # Task instructions with orthogonality requirement
     prompt_parts.append(f"**Task:** Generate {ideas_per_member} distinct research ideas, each from a **different contribution type**.")
     prompt_parts.append("Assign one contribution type per idea — no two ideas may share the same type:")
-    prompt_parts.append("- **New Problem Formulation** — Define a novel task, metric, or evaluation framework")
-    prompt_parts.append("- **Feature Engineering** — Propose a new signal extraction or representation approach")
-    prompt_parts.append("- **Lightweight Baseline** — Simple, interpretable method that establishes a strong baseline")
-    prompt_parts.append("- **Data-Centric Study** — Analyze dataset quality, bias, distribution, or preprocessing impact")
-    prompt_parts.append("- **Evaluation / Analysis Paper** — Comparative study, robustness analysis, or benchmark")
-    prompt_parts.append("- **Methodology Improvement** — Adapt or extend an existing method in a novel way")
+    for name, description in contribution_types:
+        line = f"- **{name}**"
+        if description:
+            line += f" — {description}"
+        prompt_parts.append(line)
+    prompt_parts.append("")
+    prompt_parts.append("**Core requirement:** The novelty of each idea must live in the **methodology** — the specific step in the pipeline that existing approaches handle inadequately.")
+    prompt_parts.append("Input variations (different data sources, modalities) and output reformulations (different prediction targets) may support an idea but must NOT be its sole novelty.")
+    prompt_parts.append("If your idea's novelty evaporates when the dataset changes, it is not a methodological contribution.")
     prompt_parts.append("")
     prompt_parts.append("Each idea must also:")
     prompt_parts.append("1. Address the research request")
     prompt_parts.append("2. Be feasible within the given constraints")
     prompt_parts.append("3. Align with the researcher's interests and goals")
     prompt_parts.append("4. Be novel relative to any related work provided above")
-    prompt_parts.append("5. Fit within the specified timeline")
     prompt_parts.append("")
 
     # Output format
-    prompt_parts.append("**Output Format:** For each idea, provide:")
+    prompt_parts.append("**Output Format:** For each idea, provide the fields below.")
+    prompt_parts.append("**Strict word limits apply to every field — do not exceed them.**")
     prompt_parts.append("")
     prompt_parts.append("```")
     prompt_parts.append("IDEA [number]:")
-    prompt_parts.append("Title: [Clear, descriptive title]")
-    prompt_parts.append("Summary: [2-3 sentence overview]")
-    prompt_parts.append("Methodology: [Specific approach and methods]")
-    prompt_parts.append("Feasibility: [Why this is doable with given resources]")
-    prompt_parts.append("Timeline: [Estimated duration and key milestones]")
-    prompt_parts.append("Expected Outcomes: [What results to expect]")
+    prompt_parts.append("Contribution Type: [one type from the list above]")
+    prompt_parts.append("Title: [max 12 words]")
+    prompt_parts.append("Summary: [max 60 words — 2 sentences]")
+    prompt_parts.append("Gap: [max 35 words — what specific step in existing pipelines has no adequate solution, and why current approaches fail here]")
+    prompt_parts.append("Novel Component: [max 60 words — the specific new mechanism that addresses the gap; this is the publishable core]")
+    prompt_parts.append("Pipeline: [max 40 words — full approach sketch from input to output, situating the novel component in context]")
+    prompt_parts.append("Feasibility: [max 50 words]")
+    prompt_parts.append("Expected Outcomes: [max 50 words]")
     prompt_parts.append("```")
     prompt_parts.append("")
-    prompt_parts.append("Generate creative, diverse ideas. Think outside the box while staying practical.")
+    prompt_parts.append("Be concise and precise. Quality over length.")
 
     if is_reasoning_model:
         prompt_parts.append(REASONING_MODEL_SUFFIX)

@@ -9,15 +9,38 @@ import json
 import re
 
 
+def parse_ideas_from_text(
+    content: str,
+    member_id: str = "external_llm"
+) -> List[Dict[str, Any]]:
+    """
+    Parse raw idea text into structured dicts without an API client.
+    Reuses CouncilMember's parsing logic via a lightweight dummy instance.
+
+    Args:
+        content:   Raw text output from an external LLM (e.g. Claude.ai).
+        member_id: Label to tag each idea with.
+
+    Returns:
+        List of parsed idea dicts (same structure as _parse_ideas output).
+    """
+    dummy = object.__new__(CouncilMember)
+    dummy.member_id = member_id
+    return dummy._parse_ideas(content)
+
+
 class CouncilMember:
     """Represents a single council member powered by an LLM."""
 
     IDEA_FIELDS = (
+        ("contribution_type", "Contribution Type"),
         ("title", "Title"),
         ("summary", "Summary"),
-        ("methodology", "Methodology"),
+        ("gap", "Gap"),
+        ("novel_component", "Novel Component"),
+        ("pipeline", "Pipeline"),
+        ("methodology", "Methodology"),      # legacy field — kept for backward-compat with old reports
         ("feasibility", "Feasibility"),
-        ("timeline", "Timeline"),
         ("expected_outcomes", "Expected Outcomes"),
     )
 
@@ -278,6 +301,13 @@ class CouncilMember:
             critique = {"idea_index": i}
 
             # Extract fields
+            steelman_match = re.search(
+                r'Steelman:\s*(.+?)(?=Overall Assessment:|\Z)',
+                section, re.IGNORECASE | re.DOTALL
+            )
+            if steelman_match:
+                critique['steelman'] = steelman_match.group(1).strip()
+
             assessment_match = re.search(r'Overall Assessment:\s*(.+)', section, re.IGNORECASE)
             if assessment_match:
                 critique['overall_assessment'] = assessment_match.group(1).strip()
@@ -286,27 +316,30 @@ class CouncilMember:
             if strengths_match:
                 critique['strengths'] = strengths_match.group(1).strip()
 
-            weaknesses_match = re.search(r'Weaknesses:\s*(.+?)(?=Feasibility Score:|\Z)', section, re.IGNORECASE | re.DOTALL)
+            weaknesses_match = re.search(r'Weaknesses:\s*(.+?)(?=Novelty Score:|Feasibility Score:|\Z)', section, re.IGNORECASE | re.DOTALL)
             if weaknesses_match:
                 critique['weaknesses'] = weaknesses_match.group(1).strip()
-
-            feasibility_match = re.search(r'Feasibility Score:\s*(\d+)', section, re.IGNORECASE)
-            if feasibility_match:
-                critique['feasibility_score'] = int(feasibility_match.group(1))
 
             novelty_match = re.search(r'Novelty Score:\s*(\d+)', section, re.IGNORECASE)
             if novelty_match:
                 critique['novelty_score'] = int(novelty_match.group(1))
 
-            publishability_match = re.search(r'Publishability Score:\s*(\d+)', section, re.IGNORECASE)
-            if publishability_match:
-                critique['publishability_score'] = int(publishability_match.group(1))
+            feasibility_match = re.search(r'Feasibility Score:\s*(\d+)', section, re.IGNORECASE)
+            if feasibility_match:
+                critique['feasibility_score'] = int(feasibility_match.group(1))
+
+            impact_match = re.search(r'Impact Score:\s*(\d+)', section, re.IGNORECASE)
+            if impact_match:
+                critique['impact_score'] = int(impact_match.group(1))
 
             recommendation_match = re.search(r'Recommendation:\s*(.+)', section, re.IGNORECASE)
             if recommendation_match:
                 critique['recommendation'] = recommendation_match.group(1).strip()
 
-            suggestions_match = re.search(r'Suggestions for Improvement:\s*(.+?)(?=\Z)', section, re.IGNORECASE | re.DOTALL)
+            suggestions_match = re.search(
+                r'(?:Improvement|Suggestions for Improvement):\s*(.+?)(?=CRITIQUE OF IDEA|\Z)',
+                section, re.IGNORECASE | re.DOTALL
+            )
             if suggestions_match:
                 critique['suggestions'] = suggestions_match.group(1).strip()
 
@@ -315,6 +348,89 @@ class CouncilMember:
             critiques.append(critique)
 
         return critiques
+
+    async def assess_novelty(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+    ) -> Dict[str, Any]:
+        """
+        Novelty-only assessment pass (dedicated novelty critic).
+        Parses NOVELTY ASSESSMENT OF IDEA blocks instead of CRITIQUE OF IDEA blocks.
+
+        Args:
+            messages:    Pre-built novelty critique messages
+            temperature: Sampling temperature
+            max_tokens:  Maximum tokens to generate
+
+        Returns:
+            Dictionary with assessments list and metadata
+        """
+        try:
+            response = await self.api_client.chat_completion(
+                model=self.model_config["openrouter_id"],
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = self.api_client.extract_content(response)
+            usage = self.api_client.extract_usage(response)
+            self._update_token_usage(usage)
+            assessments = self._parse_novelty_assessments(content)
+            return {
+                "member_id": self.member_id,
+                "model": self.model_config["display_name"],
+                "assessments": assessments,
+                "raw_response": content,
+                "usage": usage,
+            }
+        except Exception as e:
+            logger.error(f"Error assessing novelty for {self.member_id}: {e}")
+            return {
+                "member_id": self.member_id,
+                "model": self.model_config["display_name"],
+                "assessments": [],
+                "error": str(e),
+                "usage": {"input_tokens": 0, "output_tokens": 0},
+            }
+
+    def _parse_novelty_assessments(self, content: str) -> List[Dict[str, Any]]:
+        """
+        Parse NOVELTY ASSESSMENT OF IDEA [n]: blocks from the novelty critic response.
+
+        Returns:
+            List of {idea_index, novelty_score, closest_prior_work, novelty_justification}
+        """
+        assessments = []
+        sections = re.split(
+            r'NOVELTY ASSESSMENT OF IDEA\s+\d+:', content, flags=re.IGNORECASE
+        )
+        for i, section in enumerate(sections[1:]):
+            assessment: Dict[str, Any] = {"idea_index": i}
+
+            prior_work_match = re.search(
+                r'Closest Prior Work:\s*(.+?)(?=Novelty Justification:|Novelty Score:|\Z)',
+                section, re.IGNORECASE | re.DOTALL
+            )
+            if prior_work_match:
+                assessment["closest_prior_work"] = prior_work_match.group(1).strip()
+
+            justification_match = re.search(
+                r'Novelty Justification:\s*(.+?)(?=Novelty Score:|\Z)',
+                section, re.IGNORECASE | re.DOTALL
+            )
+            if justification_match:
+                assessment["novelty_justification"] = justification_match.group(1).strip()
+
+            novelty_match = re.search(r'Novelty Score:\s*(\d+)', section, re.IGNORECASE)
+            if novelty_match:
+                assessment["novelty_score"] = int(novelty_match.group(1))
+
+            assessment["member_id"] = self.member_id
+            assessments.append(assessment)
+
+        return assessments
 
     def _update_token_usage(self, usage: Dict[str, int]) -> None:
         """Update cumulative token usage."""

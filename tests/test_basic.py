@@ -27,7 +27,7 @@ def test_model_config_access():
     settings = Settings()
 
     # Test getting a model config
-    claude_config = settings.get_model_config("claude_sonnet")
+    claude_config = settings.get_model_config("claude_sonnet_latest")
     assert claude_config is not None
     assert "openrouter_id" in claude_config
     assert "display_name" in claude_config
@@ -47,7 +47,7 @@ def test_cost_estimation():
     settings = Settings()
 
     # Test cost calculation for diverge phase
-    model_keys = ["claude_sonnet", "gemini"]
+    model_keys = ["claude_sonnet_latest", "gemini"]
     cost = settings.calculate_estimated_cost(
         model_keys=model_keys,
         phase="diverge",
@@ -84,7 +84,7 @@ def test_validator_models():
     # Valid selection
     try:
         Validator.validate_model_selection(
-            ["claude_sonnet", "gemini"],
+            ["claude_sonnet_latest", "gemini"],
             available_models
         )
         assert True
@@ -93,12 +93,12 @@ def test_validator_models():
 
     # Too few models
     with pytest.raises(ValidationError):
-        Validator.validate_model_selection(["claude_sonnet"], available_models)
+        Validator.validate_model_selection(["claude_sonnet_latest"], available_models)
 
     # Invalid model key
     with pytest.raises(ValidationError):
         Validator.validate_model_selection(
-            ["claude_sonnet", "invalid_model"],
+            ["claude_sonnet_latest", "invalid_model"],
             available_models
         )
 

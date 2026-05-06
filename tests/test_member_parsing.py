@@ -21,9 +21,10 @@ Structure check:
 IDEA [number]:
 Title: [Clear, descriptive title]
 Summary: [2-3 sentence overview]
-Methodology: [Specific approach and methods]
+Gap: [The research gap being addressed]
+Novel Component: [The key novelty of the approach]
+Pipeline: [Step-by-step methodology]
 Feasibility: [Why this is doable with given resources]
-Timeline: [Estimated duration and key milestones]
 Expected Outcomes: [What results to expect]
 ```
 
@@ -33,10 +34,11 @@ Drafting:
 
 Title: Algorithmic Disagreement Signatures as Proxy for Movement Complexity in Free-Living Populations
 Summary: Instead of treating discrepancies between step-counting algorithms as noise, this study extracts features from minute-level disagreement to predict health indicators.
-Methodology: Calculate per-minute variance and entropy across the six step algorithms.
+Gap: No prior work has mined inter-algorithm disagreement as a proxy for movement complexity.
+Novel Component: A disagreement feature extractor that quantifies per-minute variance and entropy.
+Pipeline: Calculate per-minute variance and entropy across the six step algorithms.
 Use Random Forest and XGBoost on the engineered features.
 Feasibility: Purely CPU-based feature engineering and classical ML.
-Timeline: Month 1-2 for preprocessing, Month 3-4 for modeling, Month 5-6 for writing.
 Expected Outcomes: A lightweight biomarker and a publishable methods-focused baseline.
 """
 
@@ -48,7 +50,7 @@ Expected Outcomes: A lightweight biomarker and a publishable methods-focused bas
         "in Free-Living Populations"
     )
     assert ideas[0]["summary"].startswith("Instead of treating discrepancies")
-    assert "Use Random Forest and XGBoost" in ideas[0]["methodology"]
+    assert "Use Random Forest and XGBoost" in ideas[0]["pipeline"]
     assert ideas[0]["feasibility"] == "Purely CPU-based feature engineering and classical ML."
     assert ideas[0]["expected_outcomes"].startswith("A lightweight biomarker")
 
@@ -61,11 +63,12 @@ IDEA 1:
 **Title:** Temporal Activity Fragmentation Index
 **Summary:** Develop and validate novel metrics quantifying how fragmented physical activity is.
 This should remain attached to the summary field.
-**Methodology:** Engineer bout-based features.
+**Gap:** No validated fragmentation metric exists for free-living accelerometer data.
+**Novel Component:** A set of bout-based features capturing fragmentation patterns.
+**Pipeline:** Engineer bout-based features.
 1. Count activity bouts.
 2. Compute Gini coefficient of bout lengths.
 **Feasibility:** No GPU required.
-**Timeline:** Six months.
 **Expected Outcomes:** A compact and interpretable activity-quality metric.
 """
 
@@ -74,5 +77,4 @@ This should remain attached to the summary field.
     assert len(ideas) == 1
     assert ideas[0]["title"] == "Temporal Activity Fragmentation Index"
     assert "remain attached to the summary field" in ideas[0]["summary"]
-    assert "Compute Gini coefficient" in ideas[0]["methodology"]
-    assert ideas[0]["timeline"] == "Six months."
+    assert "Compute Gini coefficient" in ideas[0]["pipeline"]

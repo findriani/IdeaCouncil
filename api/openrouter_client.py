@@ -92,7 +92,14 @@ class OpenRouterClient:
             **kwargs
         }
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        # Use granular timeouts: quick connect, long read (models can take minutes)
+        http_timeout = httpx.Timeout(
+            connect=30.0,
+            read=float(self.timeout),
+            write=30.0,
+            pool=60.0
+        )
+        async with httpx.AsyncClient(timeout=http_timeout) as client:
             for attempt in range(self.max_retries):
                 try:
                     async with self.rate_limiter:
@@ -130,21 +137,29 @@ class OpenRouterClient:
                     response.raise_for_status()
                     return response.json()
 
-                except httpx.TimeoutException:
+                except httpx.TimeoutException as e:
                     if attempt < self.max_retries - 1:
                         wait_time = 2 ** attempt
-                        logger.warning(f"Request timeout, retrying in {wait_time}s")
+                        logger.warning(
+                            f"Timeout ({type(e).__name__}) for {model} "
+                            f"(attempt {attempt+1}/{self.max_retries}), retrying in {wait_time}s"
+                        )
                         await asyncio.sleep(wait_time)
                     else:
-                        raise OpenRouterError("Request timed out after retries")
+                        raise OpenRouterError(
+                            f"Request timed out after {self.max_retries} attempts for {model}"
+                        )
 
                 except httpx.RequestError as e:
                     if attempt < self.max_retries - 1:
                         wait_time = 2 ** attempt
-                        logger.warning(f"Request error: {e}, retrying in {wait_time}s")
+                        logger.warning(
+                            f"Network error ({type(e).__name__}: {e!r}) for {model} "
+                            f"(attempt {attempt+1}/{self.max_retries}), retrying in {wait_time}s"
+                        )
                         await asyncio.sleep(wait_time)
                     else:
-                        raise OpenRouterError(f"Request failed: {e}")
+                        raise OpenRouterError(f"Request failed for {model}: {e}")
 
         raise OpenRouterError("Max retries exceeded")
 
@@ -209,7 +224,7 @@ class OpenRouterClient:
         url = f"{self.base_url}/models"
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(url, headers=self.headers)
                 response.raise_for_status()
                 data = response.json()

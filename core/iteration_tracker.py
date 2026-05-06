@@ -24,7 +24,9 @@ class IterationTracker:
         diverge_results: Dict[str, Any],
         criticize_results: Dict[str, Any],
         converge_results: Dict[str, Any],
-        user_feedback: str = ""
+        user_feedback: str = "",
+        dedup_report: Optional[List[Dict[str, Any]]] = None,
+        controversy: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Add a completed iteration.
@@ -42,7 +44,9 @@ class IterationTracker:
             "diverge": diverge_results,
             "criticize": criticize_results,
             "converge": converge_results,
-            "user_feedback": user_feedback
+            "user_feedback": user_feedback,
+            "dedup_report": dedup_report or [],
+            "controversy": controversy or {},
         }
 
         self.iterations.append(iteration_data)
